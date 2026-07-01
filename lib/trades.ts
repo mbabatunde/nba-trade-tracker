@@ -1,4 +1,4 @@
-import { detectTeams, TEAMS } from './teams'
+import { getTeam, TEAMS } from './teams'
 
 // Every word that appears in a team city or nickname — used to reject
 // candidate "player names" that are really team references (e.g. "The Lakers").
@@ -29,7 +29,10 @@ export interface Trade {
   id: string
   /** ISO timestamp of the trade / report. */
   date: string
+  /** Short auto-generated (or curated) one-line summary. */
   headline: string
+  /** Full original report text, when the trade came from a live feed post. */
+  fullText?: string
   parties: TradeParty[]
   /** "reported" = rumor / agreed, "official" = league-confirmed. */
   status: 'reported' | 'official'
@@ -118,7 +121,12 @@ export const SEED_TRADES: Trade[] = [
   },
 ]
 
-const PLAYER_NAME = /\b([A-Z][a-zç'’.-]+(?:\s+[A-Z][a-zç'’.-]+){1,2})\b/g
+// A capitalized word followed by 1–3 more capitalized words, joined by spaces
+// or hyphens. Each part must start uppercase so trailing connective words
+// ("from the", "and a") aren't swallowed. Unicode-aware so diacritics
+// (Dončić, Jokić) and hyphenated surnames (Gilgeous-Alexander) stay whole.
+const PLAYER_NAME =
+  /\p{Lu}[\p{Ll}\p{M}'’]+(?:[-\s]+\p{Lu}[\p{Ll}\p{M}'’]+){1,3}/gu
 
 const TRADE_KEYWORDS = [
   'trade',
@@ -135,19 +143,102 @@ const TRADE_KEYWORDS = [
   'sign-and-trade',
 ]
 
-const PICK_HINT = /(20\d\d).{0,24}?(first|second|1st|2nd)\s*[- ]?round(?:\s*pick)?/gi
+const PICK_HINT = /(20\d\d)[^.,;]{0,24}?(first|second|1st|2nd)\s*[- ]?round(?:\s*pick)?/gi
 const CASH_HINT = /\$[\d.]+\s*(million|m\b|k)?/gi
+
+// Verbs whose subject team RECEIVES the assets that follow.
+const RECEIVE_VERB = /\b(acquir\w*|land\w*|get\w*|receiv\w*|add\w*|nab\w*)\b/i
+// Verbs whose subject team SENDS the assets that follow (the other team gets them).
+const SEND_VERB = /\b(trad\w*|send\w*|sent|deal\w*|ship\w*|mov\w*|offload\w*)\b/i
+// Splits the two halves of a swap.
+const CONNECTOR = /\b(in exchange for|in return for|in exchange|in return)\b/i
 
 export function looksLikeTrade(text: string): boolean {
   const lower = text.toLowerCase()
   return TRADE_KEYWORDS.some((k) => lower.includes(k))
 }
 
+const NON_NAME =
+  /\b(NBA|ESPN|Athletic|Sources?|Breaking|Today|Free|Agency|Special|Joining|Star|All|Draft|Summer|League|Report|Update|Deal|Trade|Sign|Contract|Season|Finals|Playoffs|Western|Eastern|Conference|Bird|Rights|Player|Option|Team|Front|Office|President|General|Manager|Head|Coach|First|Second|Round|Pick|Selection|Million|Dollar|Year)\b/i
+
+/** Locate the first mention of each team, keeping character positions. */
+function teamPositions(text: string): { id: string; index: number }[] {
+  const lower = ` ${text.toLowerCase()} `
+  const hits: { id: string; index: number }[] = []
+  for (const team of TEAMS) {
+    let best = -1
+    for (const alias of team.aliases) {
+      const idx = lower.indexOf(` ${alias} `)
+      if (idx !== -1 && (best === -1 || idx < best)) best = idx
+    }
+    if (best !== -1) hits.push({ id: team.id, index: best })
+  }
+  return hits.sort((a, b) => a.index - b.index)
+}
+
+interface PositionedAsset extends TradeAsset {
+  index: number
+}
+
+/** Extract players / picks / cash with their character positions. */
+function extractAssets(text: string): PositionedAsset[] {
+  const assets: PositionedAsset[] = []
+  const seen = new Set<string>()
+
+  for (const m of text.matchAll(PLAYER_NAME)) {
+    const raw = m[0].replace(/^The\s+/i, '').trim()
+    // Require a first + last name (a space), and drop obvious non-players.
+    if (!/\s/.test(raw)) continue
+    if (NON_NAME.test(raw)) continue
+    if (raw.toLowerCase().split(/[\s-]+/).some((w) => TEAM_WORDS.has(w))) continue
+    const key = `player:${raw.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    assets.push({ kind: 'player', label: raw, index: m.index ?? 0 })
+  }
+
+  for (const m of text.matchAll(PICK_HINT)) {
+    const label = m[0].replace(/\s+/g, ' ').trim()
+    const key = `pick:${label.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    assets.push({ kind: 'pick', label, index: m.index ?? 0 })
+  }
+
+  for (const m of text.matchAll(CASH_HINT)) {
+    const label = m[0].trim()
+    const key = `cash:${label.toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    assets.push({ kind: 'cash', label, index: m.index ?? 0 })
+  }
+
+  return assets.sort((a, b) => a.index - b.index)
+}
+
+/** Build a compact "Team get X +N · Team get Y" summary from parsed parties. */
+export function summarizeTrade(parties: TradeParty[]): string {
+  const parts = parties
+    .filter((p) => p.receives.length > 0)
+    .map((p) => {
+      const team = getTeam(p.teamId)
+      const name = team?.name ?? p.teamId
+      const head = p.receives[0].label
+      const rest = p.receives.length - 1
+      return rest > 0 ? `${name} get ${head} +${rest}` : `${name} get ${head}`
+    })
+  return parts.join(' · ')
+}
+
 /**
  * Heuristic parser: turn a free-text report into a best-effort structured
- * Trade. Returns null when we can't confidently identify two teams.
- * Real trade wording is messy, so this favors a clean two-team summary and
- * always keeps the raw text visible in the source card.
+ * Trade with directionally-correct asset assignment. Returns null when we
+ * can't confidently identify two teams or any moving assets.
+ *
+ * Strategy: find the primary verb (receive- vs send-type) and the subject
+ * team that owns it, then split the assets at the swap connector
+ * ("in exchange for"). The half before the connector belongs to the receiving
+ * side; the half after belongs to the other side.
  */
 export function parseTrade(opts: {
   id: string
@@ -159,50 +250,60 @@ export function parseTrade(opts: {
   const { id, text, date, source, sourceUrl } = opts
   if (!looksLikeTrade(text)) return null
 
-  const teamIds = detectTeams(text)
-  const unique = Array.from(new Set(teamIds))
-  if (unique.length < 2) return null
+  const teams = teamPositions(text)
+  if (teams.length < 2) return null
+  const teamA = teams[0]
+  const teamB = teams[1]
 
-  const [teamA, teamB] = unique
+  const assets = extractAssets(text)
+  if (assets.length === 0) return null
 
-  // Extract candidate player names, dropping obvious non-players.
-  const NON_NAME =
-    /\b(NBA|ESPN|Athletic|Sources?|Breaking|Today|Free|Agency|Special|Joining|Star|All|Draft|Summer|League|Report|Update|Deal|Trade|Sign|Contract|Season|Finals|Playoffs|Western|Eastern|Conference|Bird|Rights|Player|Option|Team|Front|Office|President|General|Manager|Head|Coach|First|Second|Round|Pick|Selection|Million|Dollar|Year|Season)\b/i
-  const names = Array.from(new Set((text.match(PLAYER_NAME) || []).map((n) => n.trim())))
-    .map((n) => n.replace(/^The\s+/i, '').trim())
-    .filter((n) => n.split(' ').length >= 2)
-    .filter((n) => !NON_NAME.test(n))
-    // Reject if any word in the candidate is a team city/nickname word.
-    .filter((n) => !n.toLowerCase().split(/\s+/).some((w) => TEAM_WORDS.has(w)))
-    .slice(0, 6)
+  // Locate the primary verb and its type.
+  const recvMatch = text.match(RECEIVE_VERB)
+  const sendMatch = text.match(SEND_VERB)
+  const recvIdx = recvMatch?.index ?? Infinity
+  const sendIdx = sendMatch?.index ?? Infinity
+  const verbIndex = Math.min(recvIdx, sendIdx)
+  const isReceiveVerb = recvIdx <= sendIdx
 
-  const picks = Array.from(new Set(text.match(PICK_HINT) || [])).slice(0, 4)
-  const cash = Array.from(new Set(text.match(CASH_HINT) || [])).slice(0, 2)
+  // Subject = the last team mentioned at or before the verb (the team acting).
+  const before = teams.filter((t) => t.index <= verbIndex)
+  const subjectId = (before.length > 0 ? before[before.length - 1] : teamA).id
+  const otherId = subjectId === teamA.id ? teamB.id : teamA.id
 
-  // Without deep NL understanding we can't reliably split who-gets-what, so we
-  // present detected players as the headline movers going to the second team
-  // and picks/cash as the return. This is clearly labeled as an auto-summary.
+  // Split assets at the swap connector.
+  const conn = text.match(CONNECTOR)
+  const connIndex = conn?.index ?? Infinity
+  const side1 = assets.filter((a) => a.index < connIndex)
+  const side2 = assets.filter((a) => a.index >= connIndex)
+
+  // Direction: receive-verb → subject gets the first half; send-verb → the
+  // other team gets the first half (the subject is giving it up).
+  const firstHalfTeam = isReceiveVerb ? subjectId : otherId
+  const secondHalfTeam = firstHalfTeam === subjectId ? otherId : subjectId
+
+  const bucket = new Map<string, TradeAsset[]>([
+    [subjectId, []],
+    [otherId, []],
+  ])
+  const strip = ({ index: _i, ...rest }: PositionedAsset): TradeAsset => rest
+  side1.forEach((a) => bucket.get(firstHalfTeam)!.push(strip(a)))
+  side2.forEach((a) => bucket.get(secondHalfTeam)!.push(strip(a)))
+
   const parties: TradeParty[] = [
-    {
-      teamId: teamB,
-      receives: names.slice(0, 3).map((label) => ({ kind: 'player' as const, label })),
-    },
-    {
-      teamId: teamA,
-      receives: [
-        ...names.slice(3).map((label) => ({ kind: 'player' as const, label })),
-        ...picks.map((label) => ({ kind: 'pick' as const, label: label.replace(/\s+/g, ' ') })),
-        ...cash.map((label) => ({ kind: 'cash' as const, label })),
-      ],
-    },
-  ]
+    { teamId: firstHalfTeam, receives: bucket.get(firstHalfTeam)! },
+    { teamId: secondHalfTeam, receives: bucket.get(secondHalfTeam)! },
+  ].filter((p) => p.receives.length > 0)
 
-  if (parties[0].receives.length === 0 && parties[1].receives.length === 0) return null
+  if (parties.length === 0) return null
+
+  const summary = summarizeTrade(parties)
 
   return {
     id,
     date,
-    headline: text.length > 120 ? `${text.slice(0, 117)}…` : text,
+    headline: summary || (text.length > 100 ? `${text.slice(0, 97)}…` : text),
+    fullText: text,
     parties,
     status: /official|complete|finaliz/i.test(text) ? 'official' : 'reported',
     source,
