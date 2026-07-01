@@ -149,9 +149,23 @@ const CASH_HINT = /\$[\d.]+\s*(million|m\b|k)?/gi
 // Verbs whose subject team RECEIVES the assets that follow.
 const RECEIVE_VERB = /\b(acquir\w*|land\w*|get\w*|receiv\w*|add\w*|nab\w*)\b/i
 // Verbs whose subject team SENDS the assets that follow (the other team gets them).
-const SEND_VERB = /\b(trad\w*|send\w*|sent|deal\w*|ship\w*|mov\w*|offload\w*)\b/i
-// Splits the two halves of a swap.
-const CONNECTOR = /\b(in exchange for|in return for|in exchange|in return)\b/i
+const SEND_VERB = /\b(trad\w*|send\w*|sent|ship\w*|offload\w*)\b/i
+// Splits the two halves of a swap. "for" is the loosest split and comes last.
+const CONNECTOR = /\b(in exchange for|in return for|in exchange|in return|for)\b/i
+
+// A genuine player-for-player / pick swap between two teams.
+const TRADE_VERB_STRICT = /\b(traded|trading|acquir\w+|dealt|dealing|in exchange|sign-and-trade)\b/i
+// A free-agent signing / re-signing (player joins or stays with one team).
+const SIGNING_VERB =
+  /\b(sign\w*|agreed?|agrees|intends to sign|re-?sign\w*|returns? to|to return to|joins?|joining)\b/i
+
+// Cues that name the DESTINATION team in a signing ("… deal with the 76ers").
+const DEST_CUE =
+  /\b(?:deal with|sign(?:s|ing|ed)? with|agreed? with|return(?:ing)? to|to return to|joins?|joining)\s+the\s+/gi
+
+// Contract shape, e.g. "four-year" / "$39 million".
+const YEARS_HINT = /\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)[- ]year\b/i
+const MONEY_HINT = /\$[\d.]+(?:-plus)?\s*(?:million|billion|m|k)?\b/i
 
 export function looksLikeTrade(text: string): boolean {
   const lower = text.toLowerCase()
@@ -230,17 +244,41 @@ export function summarizeTrade(parties: TradeParty[]): string {
   return parts.join(' · ')
 }
 
+const strip = ({ index: _i, ...rest }: PositionedAsset): TradeAsset => rest
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** Find the first team mentioned at or after a character position. */
+function teamAfter(text: string, fromIndex: number): string | null {
+  const sub = text.slice(fromIndex)
+  let best: { id: string; index: number } | null = null
+  for (const team of TEAMS) {
+    for (const alias of team.aliases) {
+      const m = sub.match(new RegExp(`\\b${escapeRegExp(alias)}\\b`, 'i'))
+      if (m && m.index != null && (best === null || m.index < best.index)) {
+        best = { id: team.id, index: m.index }
+      }
+    }
+  }
+  return best?.id ?? null
+}
+
+/** Build a "four-year · $39 million" contract detail, when present. */
+function extractContract(text: string): string | undefined {
+  const y = text.match(YEARS_HINT)?.[0]
+  const m = text.match(MONEY_HINT)?.[0]
+  const parts = [y?.replace(/\s+/g, '-'), m?.trim()].filter(Boolean) as string[]
+  return parts.length ? parts.join(' · ') : undefined
+}
+
+const isOfficial = (text: string) => (/official|complete|finaliz/i.test(text) ? 'official' : 'reported')
+
 /**
- * Heuristic parser: turn a free-text report into a best-effort structured
- * Trade with directionally-correct asset assignment. Returns null when we
- * can't confidently identify two teams or any moving assets.
- *
- * Strategy: find the primary verb (receive- vs send-type) and the subject
- * team that owns it, then split the assets at the swap connector
- * ("in exchange for"). The half before the connector belongs to the receiving
- * side; the half after belongs to the other side.
+ * Parse a free-agent signing / re-signing: the named player joins (or stays
+ * with) a single destination team. Direction is unambiguous — the destination
+ * is the team named by the signing cue ("deal with the …", "return to the …").
  */
-export function parseTrade(opts: {
+function parseSigning(opts: {
   id: string
   text: string
   date: string
@@ -248,7 +286,59 @@ export function parseTrade(opts: {
   sourceUrl?: string
 }): Trade | null {
   const { id, text, date, source, sourceUrl } = opts
-  if (!looksLikeTrade(text)) return null
+
+  const assets = extractAssets(text)
+  const player = assets.find((a) => a.kind === 'player')
+  if (!player) return null
+
+  // Destination = team named by the first signing cue; fall back to first team.
+  let destination: string | null = null
+  for (const m of text.matchAll(DEST_CUE)) {
+    destination = teamAfter(text, (m.index ?? 0) + m[0].length)
+    if (destination) break
+  }
+  if (!destination) destination = teamPositions(text)[0]?.id ?? null
+  if (!destination) return null
+
+  const contract = extractContract(text)
+  const parties: TradeParty[] = [
+    {
+      teamId: destination,
+      receives: [{ kind: 'player', label: player.label, detail: contract }],
+    },
+  ]
+
+  const destName = getTeam(destination)?.name ?? destination
+  const rejoin = /return|re-?sign/i.test(text)
+  const headline = `${destName} ${rejoin ? 're-sign' : 'sign'} ${player.label}`
+
+  return {
+    id,
+    date,
+    headline,
+    fullText: text,
+    parties,
+    status: isOfficial(text),
+    source,
+    sourceUrl,
+    live: true,
+  }
+}
+
+/**
+ * Parse a two-team trade/swap with directionally-correct asset assignment.
+ * Finds the primary verb (receive- vs send-type) and the acting subject team,
+ * then splits assets at the swap connector ("in exchange for" / "for"): the
+ * first half goes to the receiving side, the second half to the other side.
+ */
+function parseSwap(opts: {
+  id: string
+  text: string
+  date: string
+  source: string
+  sourceUrl?: string
+}): Trade | null {
+  const { id, text, date, source, sourceUrl } = opts
 
   const teams = teamPositions(text)
   if (teams.length < 2) return null
@@ -258,11 +348,8 @@ export function parseTrade(opts: {
   const assets = extractAssets(text)
   if (assets.length === 0) return null
 
-  // Locate the primary verb and its type.
-  const recvMatch = text.match(RECEIVE_VERB)
-  const sendMatch = text.match(SEND_VERB)
-  const recvIdx = recvMatch?.index ?? Infinity
-  const sendIdx = sendMatch?.index ?? Infinity
+  const recvIdx = text.match(RECEIVE_VERB)?.index ?? Infinity
+  const sendIdx = text.match(SEND_VERB)?.index ?? Infinity
   const verbIndex = Math.min(recvIdx, sendIdx)
   const isReceiveVerb = recvIdx <= sendIdx
 
@@ -272,13 +359,12 @@ export function parseTrade(opts: {
   const otherId = subjectId === teamA.id ? teamB.id : teamA.id
 
   // Split assets at the swap connector.
-  const conn = text.match(CONNECTOR)
-  const connIndex = conn?.index ?? Infinity
+  const connIndex = text.match(CONNECTOR)?.index ?? Infinity
   const side1 = assets.filter((a) => a.index < connIndex)
   const side2 = assets.filter((a) => a.index >= connIndex)
 
-  // Direction: receive-verb → subject gets the first half; send-verb → the
-  // other team gets the first half (the subject is giving it up).
+  // receive-verb → subject gets the first half; send-verb → the other team
+  // gets the first half (the subject is giving it up).
   const firstHalfTeam = isReceiveVerb ? subjectId : otherId
   const secondHalfTeam = firstHalfTeam === subjectId ? otherId : subjectId
 
@@ -286,7 +372,6 @@ export function parseTrade(opts: {
     [subjectId, []],
     [otherId, []],
   ])
-  const strip = ({ index: _i, ...rest }: PositionedAsset): TradeAsset => rest
   side1.forEach((a) => bucket.get(firstHalfTeam)!.push(strip(a)))
   side2.forEach((a) => bucket.get(secondHalfTeam)!.push(strip(a)))
 
@@ -298,16 +383,35 @@ export function parseTrade(opts: {
   if (parties.length === 0) return null
 
   const summary = summarizeTrade(parties)
-
   return {
     id,
     date,
     headline: summary || (text.length > 100 ? `${text.slice(0, 97)}…` : text),
     fullText: text,
     parties,
-    status: /official|complete|finaliz/i.test(text) ? 'official' : 'reported',
+    status: isOfficial(text),
     source,
     sourceUrl,
     live: true,
   }
+}
+
+/**
+ * Heuristic parser: turn a free-text report into a best-effort structured
+ * Trade. Classifies the post as a genuine trade/swap or a free-agent signing
+ * and routes to the matching parser. Returns null when it can't be confidently
+ * structured (e.g. a bare "declining player option" report).
+ */
+export function parseTrade(opts: {
+  id: string
+  text: string
+  date: string
+  source: string
+  sourceUrl?: string
+}): Trade | null {
+  const { text } = opts
+  if (!looksLikeTrade(text)) return null
+  if (TRADE_VERB_STRICT.test(text)) return parseSwap(opts)
+  if (SIGNING_VERB.test(text)) return parseSigning(opts)
+  return null
 }
