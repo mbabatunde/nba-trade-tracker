@@ -9,16 +9,11 @@ import { getTeam } from '@/lib/teams'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { TeamLogo } from './team-logo'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
-type SourceFilter = 'all' | 'bluesky' | 'reddit'
-
 export function NewsFeed({ activeTeam }: { activeTeam: string | null }) {
-  const [filter, setFilter] = useState<SourceFilter>('all')
-
   const bsky = useSWR<{ items: FeedItem[] }>('/api/bluesky', fetcher, {
     refreshInterval: 30_000,
     revalidateOnFocus: true,
@@ -26,21 +21,14 @@ export function NewsFeed({ activeTeam }: { activeTeam: string | null }) {
     refreshWhenHidden: true,
     keepPreviousData: true,
   })
-  const reddit = useSWR<{ items: FeedItem[] }>('/api/reddit', fetcher, {
-    refreshInterval: 60_000,
-    revalidateOnFocus: true,
-    revalidateOnReconnect: true,
-    refreshWhenHidden: true,
-    keepPreviousData: true,
-  })
 
-  const loading = (!bsky.data && !bsky.error) || (!reddit.data && !reddit.error)
-  const isValidating = bsky.isValidating || reddit.isValidating
+  const loading = !bsky.data && !bsky.error
+  const isValidating = bsky.isValidating
 
   const [lastUpdatedAt, setLastUpdatedAt] = useState(0)
   useEffect(() => {
-    if (bsky.data || reddit.data) setLastUpdatedAt(Date.now())
-  }, [bsky.data, reddit.data])
+    if (bsky.data) setLastUpdatedAt(Date.now())
+  }, [bsky.data])
 
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -49,13 +37,11 @@ export function NewsFeed({ activeTeam }: { activeTeam: string | null }) {
   }, [])
 
   const items = useMemo(() => {
-    const merged = [...(bsky.data?.items ?? []), ...(reddit.data?.items ?? [])]
-    return merged
-      .filter((i) => (filter === 'all' ? true : i.source === filter))
+    return (bsky.data?.items ?? [])
       .filter((i) => (activeTeam ? i.teams.includes(activeTeam) : true))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 60)
-  }, [bsky.data, reddit.data, filter, activeTeam])
+  }, [bsky.data, activeTeam])
 
   return (
     <section className="flex flex-col gap-4" aria-label="Latest NBA wire">
@@ -83,27 +69,6 @@ export function NewsFeed({ activeTeam }: { activeTeam: string | null }) {
         </div>
       </div>
 
-      <ToggleGroup
-        value={[filter]}
-        onValueChange={(v: string[]) => {
-          const next = v[0] as SourceFilter | undefined
-          if (next) setFilter(next)
-        }}
-        variant="outline"
-        size="sm"
-        className="w-full"
-      >
-        <ToggleGroupItem value="all" className="flex-1 text-xs">
-          All
-        </ToggleGroupItem>
-        <ToggleGroupItem value="bluesky" className="flex-1 text-xs">
-          Shams
-        </ToggleGroupItem>
-        <ToggleGroupItem value="reddit" className="flex-1 text-xs">
-          r/NBA
-        </ToggleGroupItem>
-      </ToggleGroup>
-
       <div className="flex flex-col">
         {loading ? (
           <div className="flex flex-col gap-4 py-2">
@@ -126,19 +91,11 @@ export function NewsFeed({ activeTeam }: { activeTeam: string | null }) {
 }
 
 function FeedRow({ item }: { item: FeedItem }) {
-  const isBsky = item.source === 'bluesky'
   return (
     <article className="flex flex-col gap-2 border-t py-3.5 first:border-t-0">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              'text-[11px] font-semibold',
-              isBsky ? 'text-chart-2' : 'text-primary',
-            )}
-          >
-            {isBsky ? 'Shams · BlueSky' : 'r/NBA'}
-          </span>
+          <span className="text-[11px] font-semibold text-chart-2">Shams · BlueSky</span>
           {item.isTrade ? (
             <Badge variant="destructive" className="gap-1 px-1.5 py-0 text-[10px]">
               <TriangleAlert className="size-3" aria-hidden />
@@ -174,7 +131,7 @@ function FeedRow({ item }: { item: FeedItem }) {
         rel="noopener noreferrer"
         className="inline-flex w-fit items-center gap-1 text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
       >
-        {isBsky ? 'View on BlueSky' : 'View on Reddit'}
+        View on BlueSky
         <ExternalLink className="size-3" aria-hidden />
       </a>
     </article>

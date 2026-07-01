@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'NBA Trade Tracker — Live Player Movement',
   description:
-    'Track NBA trades in real time. See how players move between teams and what each side gets back, with a live wire from Shams Charania and r/NBA.',
+    'Track NBA trades in real time. See how players move between teams and what each side gets back, with a live wire from Shams Charania.',
 }
 
 export const viewport: Viewport = {
