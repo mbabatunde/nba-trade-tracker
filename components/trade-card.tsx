@@ -1,103 +1,47 @@
 'use client'
 
 import { useState } from 'react'
-import { Stack, Text, Label, Link } from '@primer/react'
-import {
-  IssueDraftIcon,
-  ArrowSwitchIcon,
-  ArrowRightIcon,
-  LinkExternalIcon,
-} from '@primer/octicons-react'
+import { ArrowLeftRight, ArrowRight, CircleDot, DollarSign, ExternalLink } from 'lucide-react'
 import type { Trade, TradeAsset, TradeParty } from '@/lib/trades'
 import { getTeam } from '@/lib/teams'
-import { headshotUrl, initials } from '@/lib/players'
-import { TeamBadge } from './team-badge'
 import { timeAgo } from '@/lib/format'
-
-function PlayerAvatar({ name, accent }: { name: string; accent?: string }) {
-  const url = headshotUrl(name)
-  const size = 34
-  const common = {
-    width: size,
-    height: size,
-    borderRadius: '50%',
-    flex: '0 0 auto',
-    objectFit: 'cover' as const,
-    background: 'var(--bgColor-muted)',
-    border: '1px solid var(--borderColor-default)',
-  }
-  if (url) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url || '/placeholder.svg'}
-        alt={name}
-        loading="lazy"
-        style={{ ...common, objectPosition: 'top center' }}
-      />
-    )
-  }
-  return (
-    <span
-      aria-hidden
-      style={{
-        ...common,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 12,
-        fontWeight: 700,
-        color: accent ?? 'var(--fgColor-accent)',
-      }}
-    >
-      {initials(name)}
-    </span>
-  )
-}
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { PlayerAvatar } from './player-avatar'
+import { TeamLogo } from './team-logo'
 
 function AssetRow({ asset }: { asset: TradeAsset }) {
   const isPlayer = asset.kind === 'player'
-  const icon =
-    asset.kind === 'pick' ? (
-      <IssueDraftIcon size={14} />
-    ) : asset.kind === 'cash' ? (
-      <span style={{ fontSize: 13, fontWeight: 700 }}>$</span>
-    ) : (
-      <ArrowSwitchIcon size={14} />
-    )
-
   return (
-    <li
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 9,
-        padding: isPlayer ? '6px 10px' : '7px 10px',
-        borderRadius: 8,
-        background: 'var(--bgColor-default)',
-        border: '1px solid var(--borderColor-muted)',
-      }}
-    >
+    <li className="flex items-center gap-2.5 rounded-md border bg-background px-2.5 py-1.5">
       {isPlayer ? (
-        <PlayerAvatar name={asset.label} />
+        <PlayerAvatar name={asset.label} className="size-8" />
       ) : (
         <span
-          style={{
-            color: asset.kind === 'pick' ? 'var(--fgColor-done)' : 'var(--fgColor-success)',
-            display: 'inline-flex',
-            width: 20,
-            justifyContent: 'center',
-          }}
+          className={cn(
+            'inline-flex size-8 shrink-0 items-center justify-center rounded-md',
+            asset.kind === 'pick' && 'bg-chart-2/15 text-chart-2',
+            asset.kind === 'cash' && 'bg-success/15 text-success',
+            asset.kind === 'rights' && 'bg-chart-4/15 text-chart-4',
+          )}
+          aria-hidden
         >
-          {icon}
+          {asset.kind === 'pick' ? (
+            <CircleDot className="size-4" />
+          ) : asset.kind === 'cash' ? (
+            <DollarSign className="size-4" />
+          ) : (
+            <ArrowLeftRight className="size-4" />
+          )}
         </span>
       )}
-      <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <Text style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fgColor-default)' }}>
-          {asset.label}
-        </Text>
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-sm font-semibold">{asset.label}</span>
         {asset.detail ? (
-          <Text style={{ fontSize: 11.5, color: 'var(--fgColor-muted)' }}>{asset.detail}</Text>
+          <span className="truncate text-[11.5px] text-muted-foreground">{asset.detail}</span>
         ) : null}
       </span>
     </li>
@@ -112,54 +56,39 @@ function PartyColumn({
   state?: 'normal' | 'focused' | 'dimmed'
 }) {
   const team = getTeam(party.teamId)
-  const accent = team?.primary ?? 'var(--borderColor-emphasis)'
+  const accent = team?.primary ?? 'hsl(var(--border))'
   return (
     <div
-      className="trade-party-col"
+      className={cn(
+        'flex min-w-0 flex-1 basis-52 flex-col gap-3 rounded-xl border bg-muted/40 p-3.5 transition-all',
+        state === 'focused' && 'ring-2 ring-offset-1 ring-offset-card',
+        state === 'dimmed' && 'opacity-55',
+      )}
       style={{
-        background: 'var(--bgColor-muted)',
-        border:
-          state === 'focused'
-            ? `1px solid ${accent}`
-            : '1px solid var(--borderColor-default)',
         borderTop: `3px solid ${accent}`,
-        boxShadow: state === 'focused' ? `0 0 0 1px ${accent}` : undefined,
-        opacity: state === 'dimmed' ? 0.55 : 1,
-        transition: 'opacity 0.15s ease, box-shadow 0.15s ease',
+        ...(state === 'focused' ? ({ '--tw-ring-color': accent } as React.CSSProperties) : {}),
       }}
     >
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <TeamBadge teamId={party.teamId} size={40} />
-        <span style={{ display: 'flex', flexDirection: 'column' }}>
-          <Text style={{ fontSize: 14, fontWeight: 700, color: 'var(--fgColor-default)' }}>
-            {team?.name ?? party.teamId}
-          </Text>
-          <Text style={{ fontSize: 11, color: 'var(--fgColor-muted)' }}>{team?.city}</Text>
+      <div className="flex items-center gap-2.5">
+        <TeamLogo teamId={party.teamId} size={40} />
+        <span className="flex flex-col">
+          <span className="text-sm font-bold leading-tight">{team?.name ?? party.teamId}</span>
+          <span className="text-[11px] text-muted-foreground">{team?.city}</span>
         </span>
-      </Stack>
+      </div>
 
-      <Text
-        style={{
-          fontSize: 10.5,
-          fontWeight: 700,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          color: 'var(--fgColor-muted)',
-        }}
-      >
+      <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
         Receives
-      </Text>
+      </span>
 
       {party.receives.length > 0 ? (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <ul className="flex flex-col gap-1.5">
           {party.receives.map((a, i) => (
             <AssetRow key={`${a.label}-${i}`} asset={a} />
           ))}
         </ul>
       ) : (
-        <Text style={{ fontSize: 12, color: 'var(--fgColor-muted)', fontStyle: 'italic' }}>
-          Details pending
-        </Text>
+        <p className="text-xs italic text-muted-foreground">Details pending</p>
       )}
     </div>
   )
@@ -181,163 +110,121 @@ export function TradeCard({ trade }: { trade: Trade }) {
     })
 
   const focusedTeam = view === null ? null : getTeam(parties[view].teamId)
-  // What the focused team gives up = everything the other teams receive.
   const givesUp =
-    view === null
-      ? []
-      : parties.filter((_, i) => i !== view).flatMap((p) => p.receives)
+    view === null ? [] : parties.filter((_, i) => i !== view).flatMap((p) => p.receives)
 
   return (
-    <section
-      className="trade-card"
-      style={{
-        borderRadius: 14,
-        border: '1px solid var(--borderColor-default)',
-        background: 'var(--bgColor-default)',
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        style={{
-          padding: '16px 18px',
-          borderBottom: '1px solid var(--borderColor-muted)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}
-      >
-        <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap">
-          <Label variant={trade.status === 'official' ? 'success' : 'attention'} size="small">
-            {trade.status === 'official' ? 'Official' : 'Reported'}
-          </Label>
-          {trade.live ? (
-            <Label variant="accent" size="small">
-              Auto-parsed
-            </Label>
-          ) : null}
-          <Text style={{ fontSize: 11.5, color: 'var(--fgColor-muted)' }}>
-            {trade.source} · {timeAgo(trade.date)}
-          </Text>
-        </Stack>
-        <Text style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.35, color: 'var(--fgColor-default)' }}>
-          {trade.headline}
-        </Text>
-      </div>
-
-      <div className="trade-parties" style={{ padding: 18 }}>
-        {parties.map((party, i) => (
-          <div
-            key={party.teamId + i}
-            style={{ display: 'contents' }}
+    <Card className="@container overflow-hidden gap-0 py-0">
+      <CardHeader className="flex flex-col gap-2 border-b p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge
+            variant={trade.status === 'official' ? 'default' : 'secondary'}
+            className={cn(
+              trade.status === 'official' && 'bg-success text-success-foreground',
+            )}
           >
-            <PartyColumn
-              party={party}
-              state={view === null ? 'normal' : view === i ? 'focused' : 'dimmed'}
-            />
-            {i < parties.length - 1 ? (
-              <div className="trade-connector">
-                <button
-                  type="button"
-                  onClick={cycleView}
-                  title="Click to view the trade from each team's side"
-                  aria-label={
-                    view === null
-                      ? 'View this trade from one team\u2019s perspective'
-                      : `Viewing from ${focusedTeam?.name ?? 'a team'}\u2019s perspective. Click to change.`
-                  }
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 38,
-                    height: 38,
-                    padding: 0,
-                    cursor: 'pointer',
-                    borderRadius: '50%',
-                    color: view === null ? 'var(--fgColor-default)' : 'var(--fgColor-onEmphasis)',
-                    background:
-                      view === null ? 'var(--bgColor-muted)' : 'var(--bgColor-accent-emphasis)',
-                    border:
-                      view === null
-                        ? '1px solid var(--borderColor-default)'
-                        : '1px solid var(--bgColor-accent-emphasis)',
-                    transition: 'background 0.15s ease, color 0.15s ease',
-                  }}
-                >
-                  {twoTeam ? <ArrowSwitchIcon size={16} /> : <ArrowRightIcon size={16} />}
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ))}
-      </div>
-
-      {focusedTeam ? (
-        <div
-          style={{
-            margin: '0 18px 16px',
-            padding: 14,
-            borderRadius: 12,
-            background: 'var(--bgColor-muted)',
-            border: '1px solid var(--borderColor-default)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
-        >
-          <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap">
-            <TeamBadge teamId={parties[view!].teamId} size={28} />
-            <Text style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--fgColor-default)' }}>
-              {focusedTeam.name}&apos;s side of the deal
-            </Text>
-          </Stack>
-          <div className="trade-parties" style={{ padding: 0, gap: 12 }}>
-            <div className="trade-party-col" style={{ background: 'var(--bgColor-default)', border: '1px solid var(--borderColor-muted)' }}>
-              <Text style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fgColor-success)' }}>
-                Gets
-              </Text>
-              {parties[view!].receives.length > 0 ? (
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {parties[view!].receives.map((a, i) => (
-                    <AssetRow key={`get-${a.label}-${i}`} asset={a} />
-                  ))}
-                </ul>
-              ) : (
-                <Text style={{ fontSize: 12, color: 'var(--fgColor-muted)', fontStyle: 'italic' }}>Details pending</Text>
-              )}
-            </div>
-            <div className="trade-party-col" style={{ background: 'var(--bgColor-default)', border: '1px solid var(--borderColor-muted)' }}>
-              <Text style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fgColor-danger)' }}>
-                Gives up
-              </Text>
-              {givesUp.length > 0 ? (
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {givesUp.map((a, i) => (
-                    <AssetRow key={`give-${a.label}-${i}`} asset={a} />
-                  ))}
-                </ul>
-              ) : (
-                <Text style={{ fontSize: 12, color: 'var(--fgColor-muted)', fontStyle: 'italic' }}>Details pending</Text>
-              )}
-            </div>
-          </div>
+            {trade.status === 'official' ? 'Official' : 'Reported'}
+          </Badge>
+          {trade.live ? <Badge variant="outline">Auto-parsed</Badge> : null}
+          <span className="text-[11.5px] text-muted-foreground">
+            {trade.source} · {timeAgo(trade.date)}
+          </span>
         </div>
-      ) : null}
+        <h3 className="text-pretty text-base font-bold leading-snug">{trade.headline}</h3>
+      </CardHeader>
 
-      {trade.sourceUrl ? (
-        <div style={{ padding: '0 18px 16px' }}>
-          <Link
+      <CardContent className="p-4">
+        <div className="flex flex-col items-stretch justify-center gap-3 @md:flex-row">
+          {parties.map((party, i) => (
+            <div key={party.teamId + i} className="contents">
+              <PartyColumn
+                party={party}
+                state={view === null ? 'normal' : view === i ? 'focused' : 'dimmed'}
+              />
+              {i < parties.length - 1 ? (
+                <div className="flex shrink-0 items-center justify-center self-center">
+                  <Tooltip>
+                    <TooltipTrigger
+                      onClick={cycleView}
+                      className={cn(
+                        'inline-flex size-9 items-center justify-center rounded-full border transition-colors',
+                        view === null
+                          ? 'bg-muted text-foreground hover:bg-accent'
+                          : 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+                      )}
+                      aria-label={
+                        view === null
+                          ? "View this trade from one team's perspective"
+                          : `Viewing from ${focusedTeam?.name ?? 'a team'}'s perspective. Click to change.`
+                      }
+                    >
+                      {twoTeam ? (
+                        <ArrowLeftRight className="size-4 @md:rotate-0 rotate-90" />
+                      ) : (
+                        <ArrowRight className="size-4 @md:rotate-0 rotate-90" />
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent>Click to view each team&apos;s side</TooltipContent>
+                  </Tooltip>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+
+        {focusedTeam && view !== null ? (
+          <div className="mt-4 flex flex-col gap-3 rounded-xl border bg-muted/40 p-3.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <TeamLogo teamId={parties[view].teamId} size={28} />
+              <span className="text-sm font-bold">
+                {focusedTeam.name}&apos;s side of the deal
+              </span>
+            </div>
+            <div className="flex flex-col gap-3 @md:flex-row">
+              <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-lg border bg-background p-3">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-success">
+                  Gets
+                </span>
+                {parties[view].receives.length > 0 ? (
+                  <ul className="flex flex-col gap-1.5">
+                    {parties[view].receives.map((a, i) => (
+                      <AssetRow key={`get-${a.label}-${i}`} asset={a} />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs italic text-muted-foreground">Details pending</p>
+                )}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-lg border bg-background p-3">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-destructive">
+                  Gives up
+                </span>
+                {givesUp.length > 0 ? (
+                  <ul className="flex flex-col gap-1.5">
+                    {givesUp.map((a, i) => (
+                      <AssetRow key={`give-${a.label}-${i}`} asset={a} />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs italic text-muted-foreground">Details pending</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {trade.sourceUrl ? (
+          <a
             href={trade.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            muted
-            style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            className="mt-4 inline-flex w-fit items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             Source
-            <LinkExternalIcon size={12} />
-          </Link>
-        </div>
-      ) : null}
-    </section>
+            <ExternalLink className="size-3" aria-hidden />
+          </a>
+        ) : null}
+      </CardContent>
+    </Card>
   )
 }

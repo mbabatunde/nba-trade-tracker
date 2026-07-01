@@ -2,12 +2,14 @@
 
 import useSWR from 'swr'
 import { useMemo } from 'react'
-import { Stack, Text, Heading, Spinner, Label } from '@primer/react'
-import { Blankslate } from '@primer/react/experimental'
-import { ArrowSwitchIcon, SearchIcon } from '@primer/octicons-react'
+import { ArrowLeftRight, SearchX, X } from 'lucide-react'
 import type { Trade } from '@/lib/trades'
 import { getTeam } from '@/lib/teams'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { TradeCard } from './trade-card'
+import { TeamLogo } from './team-logo'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -37,75 +39,66 @@ export function TradeBoard({
   const team = activeTeam ? getTeam(activeTeam) : null
 
   return (
-    <Stack direction="vertical" gap="normal">
-      <Stack direction="horizontal" gap="condensed" align="center" justify="space-between" wrap="wrap">
-        <Stack direction="vertical" gap="none">
-          <Stack direction="horizontal" gap="condensed" align="center">
-            <ArrowSwitchIcon size={20} />
-            <Heading as="h2" style={{ fontSize: 20, fontWeight: 700 }}>
+    <section className="flex flex-col gap-4" aria-label="Trade board">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            {team ? (
+              <TeamLogo teamId={team.id} size={26} />
+            ) : (
+              <ArrowLeftRight className="size-5 text-primary" aria-hidden />
+            )}
+            <h2 className="text-xl font-bold tracking-tight">
               {team ? `${team.fullName} trades` : 'Trade board'}
-            </Heading>
-          </Stack>
-          <Text style={{ fontSize: 13, color: 'var(--fgColor-muted)' }}>
+            </h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
             {team
               ? 'Every completed and reported deal involving this franchise.'
               : 'Who moved where, and what came back — newest first.'}
-          </Text>
-        </Stack>
+          </p>
+        </div>
 
-        <Stack direction="horizontal" gap="condensed" align="center">
+        <div className="flex items-center gap-2">
           {data ? (
-            <Label variant="accent" size="small">
+            <Badge variant="secondary" className="tabular-nums">
               {trades.length} {trades.length === 1 ? 'trade' : 'trades'}
-            </Label>
+            </Badge>
           ) : null}
           {team ? (
-            <button
-              type="button"
-              onClick={onClearTeam}
-              style={{
-                cursor: 'pointer',
-                border: '1px solid var(--borderColor-default)',
-                background: 'var(--bgColor-default)',
-                color: 'var(--fgColor-muted)',
-                padding: '4px 12px',
-                borderRadius: 999,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={onClearTeam}>
+              <X data-icon="inline-start" />
               Clear filter
-            </button>
+            </Button>
           ) : null}
-        </Stack>
-      </Stack>
+        </div>
+      </div>
 
       {loading ? (
-        <Stack direction="horizontal" gap="condensed" align="center" style={{ padding: '48px 0' }} justify="center">
-          <Spinner size="medium" />
-          <Text style={{ color: 'var(--fgColor-muted)' }}>Loading the latest deals…</Text>
-        </Stack>
+        <div className="flex flex-col gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-64 w-full rounded-xl" />
+          ))}
+        </div>
       ) : trades.length === 0 ? (
-        <div style={{ padding: '24px 0' }}>
-          <Blankslate border>
-            <Blankslate.Visual>
-              <SearchIcon size={24} />
-            </Blankslate.Visual>
-            <Blankslate.Heading>No trades found</Blankslate.Heading>
-            <Blankslate.Description>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-14 text-center">
+          <SearchX className="size-7 text-muted-foreground" aria-hidden />
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold">No trades found</p>
+            <p className="text-sm text-muted-foreground">
               {team
                 ? `No recorded trades for the ${team.fullName} in the current feed.`
                 : 'No trades available right now — check back soon.'}
-            </Blankslate.Description>
-          </Blankslate>
+            </p>
+          </div>
         </div>
       ) : (
-        <Stack direction="vertical" gap="normal">
+        <div className="flex flex-col gap-4">
           {trades.map((trade) => (
             <TradeCard key={trade.id} trade={trade} />
           ))}
-        </Stack>
+        </div>
       )}
-    </Stack>
+    </section>
   )
 }

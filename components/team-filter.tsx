@@ -1,10 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Stack, Text, Heading, TextInput } from '@primer/react'
-import { SearchIcon, XCircleFillIcon } from '@primer/octicons-react'
+import { Search, X } from 'lucide-react'
 import { TEAMS } from '@/lib/teams'
-import { TeamBadge } from './team-badge'
+import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { TeamLogo } from './team-logo'
 
 export function TeamFilter({
   activeTeam,
@@ -27,46 +28,41 @@ export function TeamFilter({
   }, [query])
 
   return (
-    <Stack direction="vertical" gap="normal">
-      <Stack direction="vertical" gap="condensed">
-        <Heading as="h2" style={{ fontSize: 16, fontWeight: 600 }}>
-          Filter by team
-        </Heading>
-        <TextInput
-          leadingVisual={SearchIcon}
-          placeholder="Search teams"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          block
-          size="small"
-          aria-label="Search teams"
-          trailingAction={
-            activeTeam ? (
-              <TextInput.Action
-                onClick={() => onSelect(null)}
-                icon={XCircleFillIcon}
-                aria-label="Clear team filter"
-              />
-            ) : undefined
-          }
-        />
-      </Stack>
+    <section className="flex flex-col gap-4" aria-label="Filter trades by team">
+      <div className="flex flex-col gap-2">
+        <h2 className="text-base font-semibold">Filter by team</h2>
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search teams"
+            aria-label="Search teams"
+            className="h-9 pl-8 pr-8"
+          />
+          {activeTeam ? (
+            <button
+              type="button"
+              onClick={() => onSelect(null)}
+              aria-label="Clear team filter"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       {(['East', 'West'] as const).map((conf) =>
         grouped[conf].length > 0 ? (
-          <Stack direction="vertical" gap="condensed" key={conf}>
-            <Text
-              style={{
-                fontSize: 10.5,
-                fontWeight: 700,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                color: 'var(--fgColor-muted)',
-              }}
-            >
+          <div key={conf} className="flex flex-col gap-2">
+            <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
               {conf}ern Conference
-            </Text>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            </span>
+            <div className="flex flex-wrap gap-2">
               {grouped[conf].map((team) => {
                 const active = activeTeam === team.id
                 return (
@@ -76,32 +72,22 @@ export function TeamFilter({
                     onClick={() => onSelect(active ? null : team.id)}
                     title={team.fullName}
                     aria-pressed={active}
-                    style={{
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '4px 10px 4px 4px',
-                      borderRadius: 999,
-                      border: '1px solid',
-                      borderColor: active
-                        ? 'var(--borderColor-accent-emphasis)'
-                        : 'var(--borderColor-default)',
-                      background: active ? 'var(--bgColor-accent-muted)' : 'var(--bgColor-default)',
-                      color: active ? 'var(--fgColor-accent)' : 'var(--fgColor-default)',
-                      fontSize: 12,
-                      fontWeight: 600,
-                    }}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-xs font-semibold transition-colors',
+                      active
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
+                    )}
                   >
-                    <TeamBadge teamId={team.id} size={22} />
+                    <TeamLogo teamId={team.id} size={20} />
                     {team.abbr}
                   </button>
                 )
               })}
             </div>
-          </Stack>
+          </div>
         ) : null,
       )}
-    </Stack>
+    </section>
   )
 }

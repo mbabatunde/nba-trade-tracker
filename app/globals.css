@@ -1,49 +1,144 @@
-/* Primer Primitives — design tokens (CSS custom properties).
-   These imports establish the token + theme baseline that every Primer
-   component and all of our own CSS reads from. Order matters: base + functional
-   tokens first, then the per-theme functional color sets. */
-@import '@primer/primitives/dist/css/base/size/size.css';
-@import '@primer/primitives/dist/css/base/typography/typography.css';
-@import '@primer/primitives/dist/css/base/motion/motion.css';
-@import '@primer/primitives/dist/css/functional/size/border.css';
-@import '@primer/primitives/dist/css/functional/size/breakpoints.css';
-@import '@primer/primitives/dist/css/functional/size/size-coarse.css';
-@import '@primer/primitives/dist/css/functional/size/size-fine.css';
-@import '@primer/primitives/dist/css/functional/size/size.css';
-@import '@primer/primitives/dist/css/functional/size/viewport.css';
-@import '@primer/primitives/dist/css/functional/typography/typography.css';
+@import 'tailwindcss';
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-@import '@primer/primitives/dist/css/functional/themes/light.css';
-@import '@primer/primitives/dist/css/functional/themes/dark.css';
-@import '@primer/primitives/dist/css/functional/themes/dark-dimmed.css';
+@custom-variant dark (&:is(.dark *));
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: var(--font-sans);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-html,
-body {
-  min-height: 100vh;
-  /* Prevent any stray element from forcing horizontal scroll on phones. */
-  max-width: 100%;
-  overflow-x: hidden;
-  background-color: var(--bgColor-default);
-  color: var(--fgColor-default);
-  font-family: var(
-    --fontStack-system,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif
-  );
+/* ---------------------------------------------------------------------------
+   NBA Trade Tracker theme — basketball orange over cool navy/charcoal, with
+   warm neutral surfaces in light mode. Colors are OKLCH for smooth theming.
+--------------------------------------------------------------------------- */
+:root {
+    --background: oklch(0.985 0.004 95);
+    --foreground: oklch(0.22 0.02 265);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.22 0.02 265);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.22 0.02 265);
+    --primary: oklch(0.645 0.2 42);
+    --primary-foreground: oklch(0.99 0.01 80);
+    --secondary: oklch(0.955 0.012 250);
+    --secondary-foreground: oklch(0.28 0.03 262);
+    --muted: oklch(0.965 0.008 250);
+    --muted-foreground: oklch(0.5 0.025 258);
+    --accent: oklch(0.94 0.035 245);
+    --accent-foreground: oklch(0.3 0.06 260);
+    --destructive: oklch(0.577 0.245 27.325);
+    --success: oklch(0.62 0.16 150);
+    --success-foreground: oklch(0.99 0.01 150);
+    --border: oklch(0.9 0.01 258);
+    --input: oklch(0.9 0.01 258);
+    --ring: oklch(0.645 0.2 42);
+    --chart-1: oklch(0.645 0.2 42);
+    --chart-2: oklch(0.6 0.13 240);
+    --chart-3: oklch(0.62 0.16 150);
+    --chart-4: oklch(0.62 0.2 300);
+    --chart-5: oklch(0.7 0.16 90);
+    --radius: 0.7rem;
+    --sidebar: oklch(0.985 0.004 95);
+    --sidebar-foreground: oklch(0.22 0.02 265);
+    --sidebar-primary: oklch(0.645 0.2 42);
+    --sidebar-primary-foreground: oklch(0.99 0.01 80);
+    --sidebar-accent: oklch(0.94 0.035 245);
+    --sidebar-accent-foreground: oklch(0.3 0.06 260);
+    --sidebar-border: oklch(0.9 0.01 258);
+    --sidebar-ring: oklch(0.645 0.2 42);
 }
 
-#__next {
-  min-height: 100vh;
+.dark {
+    --background: oklch(0.17 0.021 264);
+    --foreground: oklch(0.96 0.005 250);
+    --card: oklch(0.213 0.026 263);
+    --card-foreground: oklch(0.96 0.005 250);
+    --popover: oklch(0.213 0.026 263);
+    --popover-foreground: oklch(0.96 0.005 250);
+    --primary: oklch(0.7 0.19 44);
+    --primary-foreground: oklch(0.16 0.02 264);
+    --secondary: oklch(0.27 0.025 263);
+    --secondary-foreground: oklch(0.96 0.005 250);
+    --muted: oklch(0.27 0.025 263);
+    --muted-foreground: oklch(0.72 0.02 255);
+    --accent: oklch(0.31 0.04 260);
+    --accent-foreground: oklch(0.95 0.01 250);
+    --destructive: oklch(0.704 0.191 22.216);
+    --success: oklch(0.72 0.17 152);
+    --success-foreground: oklch(0.16 0.02 264);
+    --border: oklch(1 0 0 / 11%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.7 0.19 44);
+    --chart-1: oklch(0.7 0.19 44);
+    --chart-2: oklch(0.66 0.14 240);
+    --chart-3: oklch(0.72 0.17 152);
+    --chart-4: oklch(0.7 0.2 300);
+    --chart-5: oklch(0.78 0.16 90);
+    --sidebar: oklch(0.19 0.023 264);
+    --sidebar-foreground: oklch(0.96 0.005 250);
+    --sidebar-primary: oklch(0.7 0.19 44);
+    --sidebar-primary-foreground: oklch(0.16 0.02 264);
+    --sidebar-accent: oklch(0.31 0.04 260);
+    --sidebar-accent-foreground: oklch(0.95 0.01 250);
+    --sidebar-border: oklch(1 0 0 / 11%);
+    --sidebar-ring: oklch(0.7 0.19 44);
 }
 
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    }
+}
+
+/* Pulsing dot used for the LIVE indicator while data is refreshing. */
 @keyframes nba-pulse {
   0%,
   100% {
@@ -56,72 +151,6 @@ body {
   }
 }
 
-/* ---------- Responsive layout helpers ---------- */
-
-/* Centered content wrapper with padding that tightens on small screens. */
-.app-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding-left: 24px;
-  padding-right: 24px;
-}
-
-@media (max-width: 768px) {
-  .app-container {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-}
-
-@media (max-width: 400px) {
-  .app-container {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-}
-
-/* Trade card reacts to its OWN width (container query), so it stacks correctly
-   whether it's on a phone or inside the narrow content pane on a tablet. */
-.trade-card {
-  container-type: inline-size;
-}
-
-.trade-parties {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: stretch;
-  justify-content: center;
-}
-
-.trade-party-col {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex: 1 1 200px;
-  min-width: 0;
-  padding: 14px;
-  border-radius: 12px;
-}
-
-/* Connector between two teams: horizontal swap arrow by default. */
-.trade-connector {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  align-self: center;
-  color: var(--fgColor-muted);
-}
-
-/* When the card itself is narrow, stack the teams and rotate the connector
-   to point downward between them. */
-@container (max-width: 460px) {
-  .trade-parties {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .trade-connector {
-    transform: rotate(90deg);
-  }
+.animate-nba-pulse {
+  animation: nba-pulse 1s ease-in-out infinite;
 }

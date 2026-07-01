@@ -1,6 +1,17 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
+
+const geistSans = Geist({
+  subsets: ['latin'],
+  variable: '--font-sans',
+})
+
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+})
 
 export const metadata: Metadata = {
   title: 'NBA Trade Tracker — Live Player Movement',
@@ -8,8 +19,11 @@ export const metadata: Metadata = {
     'Track NBA trades in real time. See how players move between teams and what each side gets back, with a live wire from Shams Charania and r/NBA.',
 }
 
-export const viewport = {
-  themeColor: '#0d1117',
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fbfaf7' },
+    { media: '(prefers-color-scheme: dark)', color: '#12141c' },
+  ],
 }
 
 export default function RootLayout({
@@ -18,14 +32,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html
-      lang="en"
-      data-color-mode="dark"
-      data-light-theme="light"
-      data-dark-theme="dark"
-      suppressHydrationWarning
-    >
-      <body suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

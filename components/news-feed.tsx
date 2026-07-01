@@ -2,11 +2,15 @@
 
 import useSWR from 'swr'
 import { useEffect, useMemo, useState } from 'react'
-import { Stack, Text, Heading, Label, Link, Spinner, Token } from '@primer/react'
-import { BroadcastIcon, LinkExternalIcon, AlertIcon } from '@primer/octicons-react'
+import { Radio, ExternalLink, TriangleAlert } from 'lucide-react'
 import type { FeedItem } from '@/lib/feed'
 import { timeAgo } from '@/lib/format'
 import { getTeam } from '@/lib/teams'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { TeamLogo } from './team-logo'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -33,14 +37,11 @@ export function NewsFeed({ activeTeam }: { activeTeam: string | null }) {
   const loading = (!bsky.data && !bsky.error) || (!reddit.data && !reddit.error)
   const isValidating = bsky.isValidating || reddit.isValidating
 
-  // SWR doesn't expose a "last updated" timestamp, so track it ourselves:
-  // stamp the time whenever fresh data arrives from either source.
   const [lastUpdatedAt, setLastUpdatedAt] = useState(0)
   useEffect(() => {
     if (bsky.data || reddit.data) setLastUpdatedAt(Date.now())
   }, [bsky.data, reddit.data])
 
-  // Re-render every 15s so the "updated Xs ago" label stays fresh.
   const [, setTick] = useState(0)
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 15_000)
@@ -56,160 +57,126 @@ export function NewsFeed({ activeTeam }: { activeTeam: string | null }) {
       .slice(0, 60)
   }, [bsky.data, reddit.data, filter, activeTeam])
 
-  const tabs: { key: SourceFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'bluesky', label: 'Shams' },
-    { key: 'reddit', label: 'r/NBA' },
-  ]
-
   return (
-    <Stack direction="vertical" gap="normal">
-      <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
-        <Stack direction="horizontal" gap="condensed" align="center">
-          <BroadcastIcon size={16} />
-          <Heading as="h2" style={{ fontSize: 16, fontWeight: 600 }}>
-            Latest wire
-          </Heading>
-        </Stack>
-        {loading ? (
-          <Spinner size="small" />
-        ) : (
-          <Stack direction="horizontal" gap="condensed" align="center">
-            {lastUpdatedAt ? (
-              <Text style={{ fontSize: 11, color: 'var(--fgColor-muted)', whiteSpace: 'nowrap' }}>
-                Updated {timeAgo(new Date(lastUpdatedAt).toISOString())}
-              </Text>
-            ) : null}
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 11,
-                color: 'var(--fgColor-success)',
-                fontWeight: 600,
-              }}
-            >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background: 'var(--bgColor-success-emphasis)',
-                  boxShadow: '0 0 0 3px var(--bgColor-success-muted)',
-                  animation: isValidating ? 'nba-pulse 1s ease-in-out infinite' : undefined,
-                }}
-              />
-              LIVE
+    <section className="flex flex-col gap-4" aria-label="Latest NBA wire">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Radio className="size-4 text-primary" aria-hidden />
+          <h2 className="text-base font-semibold">Latest wire</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {lastUpdatedAt ? (
+            <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+              {`Updated ${timeAgo(new Date(lastUpdatedAt).toISOString())}`}
             </span>
-          </Stack>
+          ) : null}
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-success">
+            <span
+              className={cn(
+                'size-2 rounded-full bg-success ring-2 ring-success/25',
+                isValidating && 'animate-nba-pulse',
+              )}
+              aria-hidden
+            />
+            LIVE
+          </span>
+        </div>
+      </div>
+
+      <ToggleGroup
+        value={[filter]}
+        onValueChange={(v: string[]) => {
+          const next = v[0] as SourceFilter | undefined
+          if (next) setFilter(next)
+        }}
+        variant="outline"
+        size="sm"
+        className="w-full"
+      >
+        <ToggleGroupItem value="all" className="flex-1 text-xs">
+          All
+        </ToggleGroupItem>
+        <ToggleGroupItem value="bluesky" className="flex-1 text-xs">
+          Shams
+        </ToggleGroupItem>
+        <ToggleGroupItem value="reddit" className="flex-1 text-xs">
+          r/NBA
+        </ToggleGroupItem>
+      </ToggleGroup>
+
+      <div className="flex flex-col">
+        {loading ? (
+          <div className="flex flex-col gap-4 py-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex flex-col gap-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <p className="py-3 text-sm text-muted-foreground">No posts match this view yet.</p>
+        ) : (
+          items.map((item) => <FeedRow key={item.id} item={item} />)
         )}
-      </Stack>
-
-      <Stack direction="horizontal" gap="condensed">
-        {tabs.map((t) => {
-          const active = filter === t.key
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setFilter(t.key)}
-              style={{
-                cursor: 'pointer',
-                border: '1px solid',
-                borderColor: active ? 'var(--borderColor-accent-emphasis)' : 'var(--borderColor-default)',
-                background: active ? 'var(--bgColor-accent-muted)' : 'var(--bgColor-default)',
-                color: active ? 'var(--fgColor-accent)' : 'var(--fgColor-muted)',
-                padding: '4px 12px',
-                borderRadius: 999,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {t.label}
-            </button>
-          )
-        })}
-      </Stack>
-
-      <Stack direction="vertical" gap="none">
-        {items.length === 0 && !loading ? (
-          <Text style={{ color: 'var(--fgColor-muted)', fontSize: 13, padding: '12px 0' }}>
-            No posts match this view yet.
-          </Text>
-        ) : null}
-        {items.map((item) => (
-          <FeedRow key={item.id} item={item} />
-        ))}
-      </Stack>
-    </Stack>
+      </div>
+    </section>
   )
 }
 
 function FeedRow({ item }: { item: FeedItem }) {
+  const isBsky = item.source === 'bluesky'
   return (
-    <article
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        padding: '14px 0',
-        borderTop: '1px solid var(--borderColor-muted)',
-      }}
-    >
-      <Stack direction="horizontal" gap="condensed" align="center" justify="space-between">
-        <Stack direction="horizontal" gap="condensed" align="center">
-          <SourceChip source={item.source} />
+    <article className="flex flex-col gap-2 border-t py-3.5 first:border-t-0">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              'text-[11px] font-semibold',
+              isBsky ? 'text-chart-2' : 'text-primary',
+            )}
+          >
+            {isBsky ? 'Shams · BlueSky' : 'r/NBA'}
+          </span>
           {item.isTrade ? (
-            <Label variant="danger" size="small">
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <AlertIcon size={12} /> Trade
-              </span>
-            </Label>
+            <Badge variant="destructive" className="gap-1 px-1.5 py-0 text-[10px]">
+              <TriangleAlert className="size-3" aria-hidden />
+              Trade
+            </Badge>
           ) : null}
-        </Stack>
-        <Text style={{ fontSize: 11, color: 'var(--fgColor-muted)', whiteSpace: 'nowrap' }}>
+        </div>
+        <span className="whitespace-nowrap text-[11px] text-muted-foreground">
           {timeAgo(item.createdAt)}
-        </Text>
-      </Stack>
+        </span>
+      </div>
 
-      <Text style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--fgColor-default)' }}>
-        {item.text}
-      </Text>
+      <p className="text-sm leading-relaxed text-foreground/90">{item.text}</p>
 
       {item.teams.length > 0 ? (
-        <Stack direction="horizontal" gap="condensed" wrap="wrap">
-          {item.teams.slice(0, 4).map((id) => (
-            <Token key={id} text={getTeam(id)?.abbr ?? id} size="small" />
+        <div className="flex flex-wrap items-center gap-1.5">
+          {item.teams.slice(0, 5).map((id) => (
+            <span
+              key={id}
+              className="inline-flex items-center gap-1 rounded-full border bg-muted/50 py-0.5 pl-0.5 pr-2 text-[11px] font-medium"
+              title={getTeam(id)?.fullName ?? id}
+            >
+              <TeamLogo teamId={id} size={16} />
+              {getTeam(id)?.abbr ?? id}
+            </span>
           ))}
-        </Stack>
+        </div>
       ) : null}
 
-      <Link
+      <a
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        muted
-        style={{ fontSize: 11.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+        className="inline-flex w-fit items-center gap-1 text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
       >
-        {item.source === 'bluesky' ? 'View on BlueSky' : 'View on Reddit'}
-        <LinkExternalIcon size={11} />
-      </Link>
+        {isBsky ? 'View on BlueSky' : 'View on Reddit'}
+        <ExternalLink className="size-3" aria-hidden />
+      </a>
     </article>
-  )
-}
-
-function SourceChip({ source }: { source: FeedItem['source'] }) {
-  const isBsky = source === 'bluesky'
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        fontWeight: 600,
-        color: isBsky ? 'var(--fgColor-accent)' : 'var(--fgColor-attention)',
-      }}
-    >
-      {isBsky ? 'Shams · BlueSky' : 'r/NBA'}
-    </span>
   )
 }
