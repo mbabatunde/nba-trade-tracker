@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Stack, Text, Label, Link } from '@primer/react'
 import {
   IssueDraftIcon,
@@ -103,15 +104,28 @@ function AssetRow({ asset }: { asset: TradeAsset }) {
   )
 }
 
-function PartyColumn({ party }: { party: TradeParty }) {
+function PartyColumn({
+  party,
+  state = 'normal',
+}: {
+  party: TradeParty
+  state?: 'normal' | 'focused' | 'dimmed'
+}) {
   const team = getTeam(party.teamId)
+  const accent = team?.primary ?? 'var(--borderColor-emphasis)'
   return (
     <div
       className="trade-party-col"
       style={{
         background: 'var(--bgColor-muted)',
-        border: '1px solid var(--borderColor-default)',
-        borderTop: `3px solid ${team?.primary ?? 'var(--borderColor-emphasis)'}`,
+        border:
+          state === 'focused'
+            ? `1px solid ${accent}`
+            : '1px solid var(--borderColor-default)',
+        borderTop: `3px solid ${accent}`,
+        boxShadow: state === 'focused' ? `0 0 0 1px ${accent}` : undefined,
+        opacity: state === 'dimmed' ? 0.55 : 1,
+        transition: 'opacity 0.15s ease, box-shadow 0.15s ease',
       }}
     >
       <Stack direction="horizontal" gap="condensed" align="center">
@@ -153,6 +167,25 @@ function PartyColumn({ party }: { party: TradeParty }) {
 
 export function TradeCard({ trade }: { trade: Trade }) {
   const twoTeam = trade.parties.length === 2
+  const parties = trade.parties
+
+  // Which team's perspective is being viewed. null = neutral (both sides).
+  // Clicking the swap button cycles: neutral -> team 0 -> team 1 -> ... -> neutral.
+  const [view, setView] = useState<number | null>(null)
+
+  const cycleView = () =>
+    setView((v) => {
+      if (v === null) return 0
+      if (v + 1 >= parties.length) return null
+      return v + 1
+    })
+
+  const focusedTeam = view === null ? null : getTeam(parties[view].teamId)
+  // What the focused team gives up = everything the other teams receive.
+  const givesUp =
+    view === null
+      ? []
+      : parties.filter((_, i) => i !== view).flatMap((p) => p.receives)
 
   return (
     <section
@@ -192,33 +225,104 @@ export function TradeCard({ trade }: { trade: Trade }) {
       </div>
 
       <div className="trade-parties" style={{ padding: 18 }}>
-        {trade.parties.map((party, i) => (
+        {parties.map((party, i) => (
           <div
             key={party.teamId + i}
             style={{ display: 'contents' }}
           >
-            <PartyColumn party={party} />
-            {i < trade.parties.length - 1 ? (
-              <div aria-hidden className="trade-connector">
-                <span
+            <PartyColumn
+              party={party}
+              state={view === null ? 'normal' : view === i ? 'focused' : 'dimmed'}
+            />
+            {i < parties.length - 1 ? (
+              <div className="trade-connector">
+                <button
+                  type="button"
+                  onClick={cycleView}
+                  title="Click to view the trade from each team's side"
+                  aria-label={
+                    view === null
+                      ? 'View this trade from one team\u2019s perspective'
+                      : `Viewing from ${focusedTeam?.name ?? 'a team'}\u2019s perspective. Click to change.`
+                  }
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: 34,
-                    height: 34,
+                    width: 38,
+                    height: 38,
+                    padding: 0,
+                    cursor: 'pointer',
                     borderRadius: '50%',
-                    background: 'var(--bgColor-muted)',
-                    border: '1px solid var(--borderColor-default)',
+                    color: view === null ? 'var(--fgColor-default)' : 'var(--fgColor-onEmphasis)',
+                    background:
+                      view === null ? 'var(--bgColor-muted)' : 'var(--bgColor-accent-emphasis)',
+                    border:
+                      view === null
+                        ? '1px solid var(--borderColor-default)'
+                        : '1px solid var(--bgColor-accent-emphasis)',
+                    transition: 'background 0.15s ease, color 0.15s ease',
                   }}
                 >
                   {twoTeam ? <ArrowSwitchIcon size={16} /> : <ArrowRightIcon size={16} />}
-                </span>
+                </button>
               </div>
             ) : null}
           </div>
         ))}
       </div>
+
+      {focusedTeam ? (
+        <div
+          style={{
+            margin: '0 18px 16px',
+            padding: 14,
+            borderRadius: 12,
+            background: 'var(--bgColor-muted)',
+            border: '1px solid var(--borderColor-default)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap">
+            <TeamBadge teamId={parties[view!].teamId} size={28} />
+            <Text style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--fgColor-default)' }}>
+              {focusedTeam.name}&apos;s side of the deal
+            </Text>
+          </Stack>
+          <div className="trade-parties" style={{ padding: 0, gap: 12 }}>
+            <div className="trade-party-col" style={{ background: 'var(--bgColor-default)', border: '1px solid var(--borderColor-muted)' }}>
+              <Text style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fgColor-success)' }}>
+                Gets
+              </Text>
+              {parties[view!].receives.length > 0 ? (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {parties[view!].receives.map((a, i) => (
+                    <AssetRow key={`get-${a.label}-${i}`} asset={a} />
+                  ))}
+                </ul>
+              ) : (
+                <Text style={{ fontSize: 12, color: 'var(--fgColor-muted)', fontStyle: 'italic' }}>Details pending</Text>
+              )}
+            </div>
+            <div className="trade-party-col" style={{ background: 'var(--bgColor-default)', border: '1px solid var(--borderColor-muted)' }}>
+              <Text style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--fgColor-danger)' }}>
+                Gives up
+              </Text>
+              {givesUp.length > 0 ? (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {givesUp.map((a, i) => (
+                    <AssetRow key={`give-${a.label}-${i}`} asset={a} />
+                  ))}
+                </ul>
+              ) : (
+                <Text style={{ fontSize: 12, color: 'var(--fgColor-muted)', fontStyle: 'italic' }}>Details pending</Text>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {trade.sourceUrl ? (
         <div style={{ padding: '0 18px 16px' }}>
