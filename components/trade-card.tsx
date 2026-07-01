@@ -1,14 +1,25 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeftRight, ArrowRight, CircleDot, DollarSign, ExternalLink } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  ChevronDown,
+  CircleDot,
+  DollarSign,
+  ExternalLink,
+} from 'lucide-react'
 import type { Trade, TradeAsset, TradeParty } from '@/lib/trades'
 import { getTeam } from '@/lib/teams'
 import { timeAgo } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PlayerAvatar } from './player-avatar'
 import { TeamLogo } from './team-logo'
@@ -48,6 +59,54 @@ function AssetRow({ asset }: { asset: TradeAsset }) {
   )
 }
 
+const PICK_LABEL: Record<Exclude<TradeAsset['kind'], 'player'>, string> = {
+  pick: 'Draft picks',
+  cash: 'Cash',
+  rights: 'Rights',
+}
+
+/**
+ * Renders a party's incoming assets with players and draft picks (plus cash /
+ * rights) split into their own labeled rows.
+ */
+function AssetGroups({ assets }: { assets: TradeAsset[] }) {
+  if (assets.length === 0) {
+    return <p className="text-xs italic text-muted-foreground">Details pending</p>
+  }
+
+  const players = assets.filter((a) => a.kind === 'player')
+  const nonPlayers = assets.filter((a) => a.kind !== 'player')
+  // Group non-player assets by kind so picks sit together in their own row.
+  const groups = (['pick', 'cash', 'rights'] as const)
+    .map((kind) => ({ kind, items: nonPlayers.filter((a) => a.kind === kind) }))
+    .filter((g) => g.items.length > 0)
+
+  return (
+    <div className="flex flex-col gap-3">
+      {players.length > 0 ? (
+        <ul className="flex flex-col gap-1.5">
+          {players.map((a, i) => (
+            <AssetRow key={`player-${a.label}-${i}`} asset={a} />
+          ))}
+        </ul>
+      ) : null}
+
+      {groups.map((group) => (
+        <div key={group.kind} className="flex flex-col gap-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            {PICK_LABEL[group.kind]}
+          </span>
+          <ul className="flex flex-col gap-1.5">
+            {group.items.map((a, i) => (
+              <AssetRow key={`${group.kind}-${a.label}-${i}`} asset={a} />
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function PartyColumn({
   party,
   state = 'normal',
@@ -81,15 +140,7 @@ function PartyColumn({
         Receives
       </span>
 
-      {party.receives.length > 0 ? (
-        <ul className="flex flex-col gap-1.5">
-          {party.receives.map((a, i) => (
-            <AssetRow key={`${a.label}-${i}`} asset={a} />
-          ))}
-        </ul>
-      ) : (
-        <p className="text-xs italic text-muted-foreground">Details pending</p>
-      )}
+      <AssetGroups assets={party.receives} />
     </div>
   )
 }
@@ -131,6 +182,19 @@ export function TradeCard({ trade }: { trade: Trade }) {
           </span>
         </div>
         <h3 className="text-pretty text-base font-bold leading-snug">{trade.headline}</h3>
+        {trade.fullText && trade.fullText !== trade.headline ? (
+          <Collapsible>
+            <CollapsibleTrigger className="group inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
+              <ChevronDown className="size-3.5 transition-transform group-data-[panel-open]:rotate-180" />
+              Read full report
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <p className="mt-2 text-pretty text-[13px] leading-relaxed text-muted-foreground">
+                {trade.fullText}
+              </p>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : null}
       </CardHeader>
 
       <CardContent className="p-4">
@@ -185,29 +249,13 @@ export function TradeCard({ trade }: { trade: Trade }) {
                 <span className="text-[10.5px] font-bold uppercase tracking-wider text-success">
                   Gets
                 </span>
-                {parties[view].receives.length > 0 ? (
-                  <ul className="flex flex-col gap-1.5">
-                    {parties[view].receives.map((a, i) => (
-                      <AssetRow key={`get-${a.label}-${i}`} asset={a} />
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs italic text-muted-foreground">Details pending</p>
-                )}
+                <AssetGroups assets={parties[view].receives} />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-2 rounded-lg border bg-background p-3">
                 <span className="text-[10.5px] font-bold uppercase tracking-wider text-destructive">
                   Gives up
                 </span>
-                {givesUp.length > 0 ? (
-                  <ul className="flex flex-col gap-1.5">
-                    {givesUp.map((a, i) => (
-                      <AssetRow key={`give-${a.label}-${i}`} asset={a} />
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs italic text-muted-foreground">Details pending</p>
-                )}
+                <AssetGroups assets={givesUp} />
               </div>
             </div>
           </div>
