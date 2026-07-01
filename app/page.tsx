@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { PageLayout, Stack, Heading, Text, Label } from '@primer/react'
-import { ZapIcon } from '@primer/octicons-react'
+import { BasketballLogo } from '@/components/basketball-logo'
 import { NewsFeed } from '@/components/news-feed'
 import { TradeBoard } from '@/components/trade-board'
 import { TeamFilter } from '@/components/team-filter'
@@ -32,11 +32,11 @@ export default function Page() {
                   width: 38,
                   height: 38,
                   borderRadius: 10,
-                  background: 'var(--bgColor-accent-emphasis)',
-                  color: 'var(--fgColor-onEmphasis)',
+                  background: '#ee6730',
+                  color: '#ffffff',
                 }}
               >
-                <ZapIcon size={20} />
+                <BasketballLogo size={22} />
               </span>
               <Stack direction="vertical" gap="none">
                 <Heading as="h1" style={{ fontSize: 18, fontWeight: 700 }}>

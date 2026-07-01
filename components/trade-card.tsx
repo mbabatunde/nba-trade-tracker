@@ -2,7 +2,6 @@
 
 import { Stack, Text, Label, Link } from '@primer/react'
 import {
-  PersonIcon,
   IssueDraftIcon,
   ArrowSwitchIcon,
   ArrowRightIcon,
@@ -10,14 +9,55 @@ import {
 } from '@primer/octicons-react'
 import type { Trade, TradeAsset, TradeParty } from '@/lib/trades'
 import { getTeam } from '@/lib/teams'
+import { headshotUrl, initials } from '@/lib/players'
 import { TeamBadge } from './team-badge'
 import { timeAgo } from '@/lib/format'
 
+function PlayerAvatar({ name, accent }: { name: string; accent?: string }) {
+  const url = headshotUrl(name)
+  const size = 34
+  const common = {
+    width: size,
+    height: size,
+    borderRadius: '50%',
+    flex: '0 0 auto',
+    objectFit: 'cover' as const,
+    background: 'var(--bgColor-muted)',
+    border: '1px solid var(--borderColor-default)',
+  }
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url || '/placeholder.svg'}
+        alt={name}
+        loading="lazy"
+        style={{ ...common, objectPosition: 'top center' }}
+      />
+    )
+  }
+  return (
+    <span
+      aria-hidden
+      style={{
+        ...common,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 12,
+        fontWeight: 700,
+        color: accent ?? 'var(--fgColor-accent)',
+      }}
+    >
+      {initials(name)}
+    </span>
+  )
+}
+
 function AssetRow({ asset }: { asset: TradeAsset }) {
+  const isPlayer = asset.kind === 'player'
   const icon =
-    asset.kind === 'player' ? (
-      <PersonIcon size={14} />
-    ) : asset.kind === 'pick' ? (
+    asset.kind === 'pick' ? (
       <IssueDraftIcon size={14} />
     ) : asset.kind === 'cash' ? (
       <span style={{ fontSize: 13, fontWeight: 700 }}>$</span>
@@ -29,28 +69,28 @@ function AssetRow({ asset }: { asset: TradeAsset }) {
     <li
       style={{
         display: 'flex',
-        alignItems: 'flex-start',
-        gap: 8,
-        padding: '7px 10px',
+        alignItems: 'center',
+        gap: 9,
+        padding: isPlayer ? '6px 10px' : '7px 10px',
         borderRadius: 8,
         background: 'var(--bgColor-default)',
         border: '1px solid var(--borderColor-muted)',
       }}
     >
-      <span
-        style={{
-          color:
-            asset.kind === 'player'
-              ? 'var(--fgColor-accent)'
-              : asset.kind === 'pick'
-                ? 'var(--fgColor-done)'
-                : 'var(--fgColor-success)',
-          marginTop: 2,
-          display: 'inline-flex',
-        }}
-      >
-        {icon}
-      </span>
+      {isPlayer ? (
+        <PlayerAvatar name={asset.label} />
+      ) : (
+        <span
+          style={{
+            color: asset.kind === 'pick' ? 'var(--fgColor-done)' : 'var(--fgColor-success)',
+            display: 'inline-flex',
+            width: 20,
+            justifyContent: 'center',
+          }}
+        >
+          {icon}
+        </span>
+      )}
       <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Text style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fgColor-default)' }}>
           {asset.label}
