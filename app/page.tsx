@@ -1,14 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { PageLayout, Stack, Heading, Text, Label } from '@primer/react'
+import { PageLayout, Stack, Heading, Text, Label, IconButton } from '@primer/react'
+import { SunIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon } from '@primer/octicons-react'
 import { BasketballLogo } from '@/components/basketball-logo'
 import { NewsFeed } from '@/components/news-feed'
 import { TradeBoard } from '@/components/trade-board'
 import { TeamFilter } from '@/components/team-filter'
+import { useColorMode } from '@/components/providers'
 
 export default function Page() {
   const [activeTeam, setActiveTeam] = useState<string | null>(null)
+  const [paneOpen, setPaneOpen] = useState(true)
+  const { mode, toggle } = useColorMode()
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bgColor-inset)' }}>
@@ -24,6 +28,12 @@ export default function Page() {
         <div style={{ maxWidth: 1400, margin: '0 auto', padding: '16px 24px' }}>
           <Stack direction="horizontal" gap="condensed" align="center" justify="space-between" wrap="wrap">
             <Stack direction="horizontal" gap="condensed" align="center">
+              <IconButton
+                icon={paneOpen ? SidebarCollapseIcon : SidebarExpandIcon}
+                aria-label={paneOpen ? 'Collapse live wire' : 'Expand live wire'}
+                variant="invisible"
+                onClick={() => setPaneOpen((o) => !o)}
+              />
               <span
                 style={{
                   display: 'inline-flex',
@@ -47,15 +57,25 @@ export default function Page() {
                 </Text>
               </Stack>
             </Stack>
-            <Label variant="success">Real-time</Label>
+            <Stack direction="horizontal" gap="condensed" align="center">
+              <Label variant="success">Real-time</Label>
+              <IconButton
+                icon={mode === 'dark' ? SunIcon : MoonIcon}
+                aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                variant="invisible"
+                onClick={toggle}
+              />
+            </Stack>
           </Stack>
         </div>
       </header>
 
       <PageLayout containerWidth="full" padding="normal" columnGap="normal" rowGap="normal">
-        <PageLayout.Pane position="start" width={{ min: '300px', default: '360px', max: '440px' }} divider="line" sticky>
-          <NewsFeed activeTeam={activeTeam} />
-        </PageLayout.Pane>
+        {paneOpen ? (
+          <PageLayout.Pane position="start" width={{ min: '300px', default: '360px', max: '440px' }} divider="line" sticky>
+            <NewsFeed activeTeam={activeTeam} />
+          </PageLayout.Pane>
+        ) : null}
 
         <PageLayout.Content width="full">
           <Stack direction="vertical" gap="spacious">
