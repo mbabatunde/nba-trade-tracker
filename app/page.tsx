@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PageLayout, Stack, Heading, Text, Label, IconButton } from '@primer/react'
+import { PageLayout, Stack, Heading, Text, Label, IconButton, Link } from '@primer/react'
 import { SunIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon } from '@primer/octicons-react'
 import { BasketballLogo } from '@/components/basketball-logo'
 import { NewsFeed } from '@/components/news-feed'
@@ -85,6 +85,34 @@ export default function Page() {
           </Stack>
         </PageLayout.Content>
       </PageLayout>
+
+      <footer
+        style={{
+          borderTop: '1px solid var(--borderColor-default)',
+          background: 'var(--bgColor-default)',
+          marginTop: 24,
+        }}
+      >
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 24px' }}>
+          <Stack direction="horizontal" gap="condensed" align="center" justify="center" wrap="wrap">
+            <Text style={{ fontSize: 13, color: 'var(--fgColor-muted)' }}>
+              Powered through{' '}
+              <Link href="https://v0.app/" target="_blank" rel="noopener noreferrer">
+                v0 by Vercel
+              </Link>
+            </Text>
+            <Text style={{ fontSize: 13, color: 'var(--fgColor-muted)' }} aria-hidden>
+              ·
+            </Text>
+            <Text style={{ fontSize: 13, color: 'var(--fgColor-muted)' }}>
+              Created by{' '}
+              <Link href="https://markbabatunde.com/" target="_blank" rel="noopener noreferrer">
+                Mark Babatunde
+              </Link>
+            </Text>
+          </Stack>
+        </div>
+      </footer>
     </div>
   )
 }
