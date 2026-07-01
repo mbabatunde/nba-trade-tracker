@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { PageLayout, Stack, Heading, Text, Label, IconButton, Link } from '@primer/react'
 import { SunIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon } from '@primer/octicons-react'
-import { BasketballLogo } from '@/components/basketball-logo'
 import { NewsFeed } from '@/components/news-feed'
 import { TradeBoard } from '@/components/trade-board'
 import { TeamFilter } from '@/components/team-filter'
@@ -37,16 +36,22 @@ export default function Page() {
               <span
                 style={{
                   display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 38,
-                  height: 38,
+                  overflow: 'hidden',
+                  width: 40,
+                  height: 40,
                   borderRadius: 10,
-                  background: '#ee6730',
-                  color: '#ffffff',
+                  border: '1px solid var(--borderColor-default)',
+                  flex: '0 0 auto',
                 }}
               >
-                <BasketballLogo size={22} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/basketball-court.jpg"
+                  alt="Basketball resting on a hardwood court"
+                  width={40}
+                  height={40}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '72% 45%' }}
+                />
               </span>
               <Stack direction="vertical" gap="none">
                 <Heading as="h1" style={{ fontSize: 18, fontWeight: 700 }}>

@@ -227,23 +227,16 @@ export function TradeCard({ trade }: { trade: Trade }) {
                 <span
                   style={{
                     display: 'inline-flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 4,
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    background: 'var(--bgColor-muted)',
+                    border: '1px solid var(--borderColor-default)',
                   }}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/images/basketball.png"
-                    alt=""
-                    width={40}
-                    height={40}
-                    style={{ display: 'block', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.35))' }}
-                  />
-                  <span style={{ color: 'var(--fgColor-muted)', display: 'inline-flex' }}>
-                    {twoTeam ? <ArrowSwitchIcon size={14} /> : <ArrowRightIcon size={14} />}
-                  </span>
+                  {twoTeam ? <ArrowSwitchIcon size={16} /> : <ArrowRightIcon size={16} />}
                 </span>
               </div>
             ) : null}
