@@ -60,7 +60,7 @@ export default function Page() {
             </span>
             <div className="flex min-w-0 flex-col">
               <h1 className="truncate text-lg font-bold leading-tight tracking-tight">
-                NBA Trade Tracker
+                NBA Swaps
               </h1>
               <p className="hidden truncate text-xs text-muted-foreground sm:block">
                 Live player movement, powered by Shams Charania
