@@ -75,21 +75,23 @@ export default function Page() {
         </div>
       </header>
 
-      <PageLayout containerWidth="full" padding="normal" columnGap="normal" rowGap="normal">
-        {paneOpen ? (
-          <PageLayout.Pane position="start" width={{ min: '300px', default: '360px', max: '440px' }} divider="line" sticky>
-            <NewsFeed activeTeam={activeTeam} />
-          </PageLayout.Pane>
-        ) : null}
+      <div className="app-container" style={{ paddingLeft: 0, paddingRight: 0 }}>
+        <PageLayout containerWidth="full" padding="normal" columnGap="normal" rowGap="normal">
+          {paneOpen ? (
+            <PageLayout.Pane position="start" width={{ min: '300px', default: '360px', max: '420px' }} divider="line" sticky>
+              <NewsFeed activeTeam={activeTeam} />
+            </PageLayout.Pane>
+          ) : null}
 
-        <PageLayout.Content width="full">
-          <Stack direction="vertical" gap="spacious">
-            <TeamFilter activeTeam={activeTeam} onSelect={setActiveTeam} />
-            <hr style={{ border: 'none', borderTop: '1px solid var(--borderColor-muted)', margin: 0 }} />
-            <TradeBoard activeTeam={activeTeam} onClearTeam={() => setActiveTeam(null)} />
-          </Stack>
-        </PageLayout.Content>
-      </PageLayout>
+          <PageLayout.Content width="full">
+            <Stack direction="vertical" gap="spacious">
+              <TeamFilter activeTeam={activeTeam} onSelect={setActiveTeam} />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--borderColor-muted)', margin: 0 }} />
+              <TradeBoard activeTeam={activeTeam} onClearTeam={() => setActiveTeam(null)} />
+            </Stack>
+          </PageLayout.Content>
+        </PageLayout>
+      </div>
 
       <footer
         style={{
