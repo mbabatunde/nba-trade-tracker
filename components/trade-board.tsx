@@ -1,13 +1,14 @@
 'use client'
 
 import useSWR from 'swr'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowLeftRight, SearchX, X } from 'lucide-react'
 import type { Trade } from '@/lib/trades'
 import { getTeam } from '@/lib/teams'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { TradeCard } from './trade-card'
 import { TeamLogo } from './team-logo'
 
@@ -30,11 +31,29 @@ export function TradeBoard({
 
   const loading = !data && !error
 
-  const trades = useMemo(() => {
+  const [year, setYear] = useState<string>('all')
+
+  // Years present in the data (team-scoped), newest first, for the filter.
+  const years = useMemo(() => {
     const list = data?.trades ?? []
-    if (!activeTeam) return list
-    return list.filter((t) => t.parties.some((p) => p.teamId === activeTeam))
+    const scoped = activeTeam
+      ? list.filter((t) => t.parties.some((p) => p.teamId === activeTeam))
+      : list
+    const set = new Set(scoped.map((t) => new Date(t.date).getFullYear().toString()))
+    return Array.from(set).sort((a, b) => Number(b) - Number(a))
   }, [data, activeTeam])
+
+  // Reset the year filter if the active team no longer has that year.
+  const effectiveYear = year !== 'all' && !years.includes(year) ? 'all' : year
+
+  const trades = useMemo(() => {
+    let list = data?.trades ?? []
+    if (activeTeam) list = list.filter((t) => t.parties.some((p) => p.teamId === activeTeam))
+    if (effectiveYear !== 'all') {
+      list = list.filter((t) => new Date(t.date).getFullYear().toString() === effectiveYear)
+    }
+    return list
+  }, [data, activeTeam, effectiveYear])
 
   const team = activeTeam ? getTeam(activeTeam) : null
 
@@ -74,6 +93,25 @@ export function TradeBoard({
         </div>
       </div>
 
+      {years.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Year</span>
+          <ToggleGroup
+            value={[effectiveYear]}
+            onValueChange={(v: string[]) => setYear(v[0] ?? 'all')}
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="all">All</ToggleGroupItem>
+            {years.map((y) => (
+              <ToggleGroupItem key={y} value={y} className="tabular-nums">
+                {y}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="flex flex-col gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -86,9 +124,11 @@ export function TradeBoard({
           <div className="flex flex-col gap-1">
             <p className="font-semibold">No trades found</p>
             <p className="text-sm text-muted-foreground">
-              {team
-                ? `No recorded trades for the ${team.fullName} in the current feed.`
-                : 'No trades available right now — check back soon.'}
+              {effectiveYear !== 'all'
+                ? `No ${team ? `${team.fullName} ` : ''}trades recorded in ${effectiveYear}.`
+                : team
+                  ? `No recorded trades for the ${team.fullName} in the current feed.`
+                  : 'No trades available right now — check back soon.'}
             </p>
           </div>
         </div>
