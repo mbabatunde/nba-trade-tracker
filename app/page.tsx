@@ -63,7 +63,7 @@ export default function Page() {
                 NBA Trade Tracker
               </h1>
               <p className="hidden truncate text-xs text-muted-foreground sm:block">
-                Live player movement, powered by Shams Charania &amp; r/NBA
+                Live player movement, powered by Shams Charania
               </p>
             </div>
           </div>
