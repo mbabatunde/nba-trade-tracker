@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { PageLayout, Stack, Heading, Text, Label, IconButton, Link } from '@primer/react'
-import { SunIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon } from '@primer/octicons-react'
+import { SunIcon, MoonIcon, SidebarCollapseIcon, SidebarExpandIcon, HeartIcon } from '@primer/octicons-react'
 import { NewsFeed } from '@/components/news-feed'
 import { TradeBoard } from '@/components/trade-board'
 import { TeamFilter } from '@/components/team-filter'
@@ -115,6 +115,18 @@ export default function Page() {
                 Mark Babatunde
               </Link>
             </Text>
+            <Text style={{ fontSize: 13, color: 'var(--fgColor-muted)' }} aria-hidden>
+              ·
+            </Text>
+            <Link
+              href="https://buymeacoffee.com/markbabatunde"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+            >
+              <HeartIcon size={14} />
+              Buy me a coffee
+            </Link>
           </Stack>
         </div>
       </footer>
