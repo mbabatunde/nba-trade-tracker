@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Heart, PanelLeftClose, PanelLeftOpen, Radio } from 'lucide-react'
+import { BrandLogo } from '@/components/brand-logo'
 import { NewsFeed } from '@/components/news-feed'
 import { TradeBoard } from '@/components/trade-board'
 import { TeamFilter } from '@/components/team-filter'
@@ -47,16 +48,9 @@ export default function Page() {
               </SheetContent>
             </Sheet>
 
-            <span className="inline-flex size-10 shrink-0 overflow-hidden rounded-lg border">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/basketball-court.jpg"
-                alt="Basketball resting on a hardwood court"
-                width={40}
-                height={40}
-                className="size-full object-cover"
-                style={{ objectPosition: '72% 45%' }}
-              />
+            <span className="inline-flex size-10 shrink-0">
+              <BrandLogo className="drop-shadow-sm" />
+              <span className="sr-only">NBA Swaps logo</span>
             </span>
             <div className="flex min-w-0 flex-col">
               <h1 className="truncate text-lg font-bold leading-tight tracking-tight">
