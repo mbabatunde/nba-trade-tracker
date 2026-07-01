@@ -1,0 +1,223 @@
+'use client'
+
+import { Stack, Text, Label, Link } from '@primer/react'
+import {
+  PersonIcon,
+  IssueDraftIcon,
+  ArrowSwitchIcon,
+  ArrowRightIcon,
+  LinkExternalIcon,
+} from '@primer/octicons-react'
+import type { Trade, TradeAsset, TradeParty } from '@/lib/trades'
+import { getTeam } from '@/lib/teams'
+import { TeamBadge } from './team-badge'
+import { timeAgo } from '@/lib/format'
+
+function AssetRow({ asset }: { asset: TradeAsset }) {
+  const icon =
+    asset.kind === 'player' ? (
+      <PersonIcon size={14} />
+    ) : asset.kind === 'pick' ? (
+      <IssueDraftIcon size={14} />
+    ) : asset.kind === 'cash' ? (
+      <span style={{ fontSize: 13, fontWeight: 700 }}>$</span>
+    ) : (
+      <ArrowSwitchIcon size={14} />
+    )
+
+  return (
+    <li
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 8,
+        padding: '7px 10px',
+        borderRadius: 8,
+        background: 'var(--bgColor-default)',
+        border: '1px solid var(--borderColor-muted)',
+      }}
+    >
+      <span
+        style={{
+          color:
+            asset.kind === 'player'
+              ? 'var(--fgColor-accent)'
+              : asset.kind === 'pick'
+                ? 'var(--fgColor-done)'
+                : 'var(--fgColor-success)',
+          marginTop: 2,
+          display: 'inline-flex',
+        }}
+      >
+        {icon}
+      </span>
+      <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <Text style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fgColor-default)' }}>
+          {asset.label}
+        </Text>
+        {asset.detail ? (
+          <Text style={{ fontSize: 11.5, color: 'var(--fgColor-muted)' }}>{asset.detail}</Text>
+        ) : null}
+      </span>
+    </li>
+  )
+}
+
+function PartyColumn({ party }: { party: TradeParty }) {
+  const team = getTeam(party.teamId)
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        flex: '1 1 220px',
+        minWidth: 200,
+        padding: 14,
+        borderRadius: 12,
+        background: 'var(--bgColor-muted)',
+        border: '1px solid var(--borderColor-default)',
+        borderTop: `3px solid ${team?.primary ?? 'var(--borderColor-emphasis)'}`,
+      }}
+    >
+      <Stack direction="horizontal" gap="condensed" align="center">
+        <TeamBadge teamId={party.teamId} size={40} />
+        <span style={{ display: 'flex', flexDirection: 'column' }}>
+          <Text style={{ fontSize: 14, fontWeight: 700, color: 'var(--fgColor-default)' }}>
+            {team?.name ?? party.teamId}
+          </Text>
+          <Text style={{ fontSize: 11, color: 'var(--fgColor-muted)' }}>{team?.city}</Text>
+        </span>
+      </Stack>
+
+      <Text
+        style={{
+          fontSize: 10.5,
+          fontWeight: 700,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'var(--fgColor-muted)',
+        }}
+      >
+        Receives
+      </Text>
+
+      {party.receives.length > 0 ? (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {party.receives.map((a, i) => (
+            <AssetRow key={`${a.label}-${i}`} asset={a} />
+          ))}
+        </ul>
+      ) : (
+        <Text style={{ fontSize: 12, color: 'var(--fgColor-muted)', fontStyle: 'italic' }}>
+          Details pending
+        </Text>
+      )}
+    </div>
+  )
+}
+
+export function TradeCard({ trade }: { trade: Trade }) {
+  const twoTeam = trade.parties.length === 2
+
+  return (
+    <section
+      style={{
+        borderRadius: 14,
+        border: '1px solid var(--borderColor-default)',
+        background: 'var(--bgColor-default)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          padding: '16px 18px',
+          borderBottom: '1px solid var(--borderColor-muted)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap">
+          <Label variant={trade.status === 'official' ? 'success' : 'attention'} size="small">
+            {trade.status === 'official' ? 'Official' : 'Reported'}
+          </Label>
+          {trade.live ? (
+            <Label variant="accent" size="small">
+              Auto-parsed
+            </Label>
+          ) : null}
+          <Text style={{ fontSize: 11.5, color: 'var(--fgColor-muted)' }}>
+            {trade.source} · {timeAgo(trade.date)}
+          </Text>
+        </Stack>
+        <Text style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.35, color: 'var(--fgColor-default)' }}>
+          {trade.headline}
+        </Text>
+      </div>
+
+      <div
+        style={{
+          padding: 18,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          alignItems: 'stretch',
+          justifyContent: 'center',
+        }}
+      >
+        {trade.parties.map((party, i) => (
+          <div
+            key={party.teamId + i}
+            style={{ display: 'contents' }}
+          >
+            <PartyColumn party={party} />
+            {i < trade.parties.length - 1 ? (
+              <div
+                aria-hidden
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flex: '0 0 auto',
+                  color: 'var(--fgColor-muted)',
+                  alignSelf: 'center',
+                }}
+              >
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    background: 'var(--bgColor-muted)',
+                    border: '1px solid var(--borderColor-default)',
+                  }}
+                >
+                  {twoTeam ? <ArrowSwitchIcon size={16} /> : <ArrowRightIcon size={16} />}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      {trade.sourceUrl ? (
+        <div style={{ padding: '0 18px 16px' }}>
+          <Link
+            href={trade.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            muted
+            style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            Source
+            <LinkExternalIcon size={12} />
+          </Link>
+        </div>
+      ) : null}
+    </section>
+  )
+}
