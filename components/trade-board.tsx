@@ -19,8 +19,11 @@ export function TradeBoard({
   onClearTeam: () => void
 }) {
   const { data, error } = useSWR<{ trades: Trade[]; liveCount: number }>('/api/trades', fetcher, {
-    refreshInterval: 60_000,
+    refreshInterval: 30_000,
     revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    refreshWhenHidden: true,
+    keepPreviousData: true,
   })
 
   const loading = !data && !error

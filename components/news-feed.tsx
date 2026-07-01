@@ -1,7 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Stack, Text, Heading, Label, Link, Spinner, Token } from '@primer/react'
 import { BroadcastIcon, LinkExternalIcon, AlertIcon } from '@primer/octicons-react'
 import type { FeedItem } from '@/lib/feed'
@@ -16,15 +16,36 @@ export function NewsFeed({ activeTeam }: { activeTeam: string | null }) {
   const [filter, setFilter] = useState<SourceFilter>('all')
 
   const bsky = useSWR<{ items: FeedItem[] }>('/api/bluesky', fetcher, {
-    refreshInterval: 60_000,
+    refreshInterval: 30_000,
     revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    refreshWhenHidden: true,
+    keepPreviousData: true,
   })
   const reddit = useSWR<{ items: FeedItem[] }>('/api/reddit', fetcher, {
-    refreshInterval: 120_000,
+    refreshInterval: 60_000,
     revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    refreshWhenHidden: true,
+    keepPreviousData: true,
   })
 
   const loading = (!bsky.data && !bsky.error) || (!reddit.data && !reddit.error)
+  const isValidating = bsky.isValidating || reddit.isValidating
+
+  // SWR doesn't expose a "last updated" timestamp, so track it ourselves:
+  // stamp the time whenever fresh data arrives from either source.
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(0)
+  useEffect(() => {
+    if (bsky.data || reddit.data) setLastUpdatedAt(Date.now())
+  }, [bsky.data, reddit.data])
+
+  // Re-render every 15s so the "updated Xs ago" label stays fresh.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 15_000)
+    return () => clearInterval(t)
+  }, [])
 
   const items = useMemo(() => {
     const merged = [...(bsky.data?.items ?? []), ...(reddit.data?.items ?? [])]
@@ -53,27 +74,35 @@ export function NewsFeed({ activeTeam }: { activeTeam: string | null }) {
         {loading ? (
           <Spinner size="small" />
         ) : (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 11,
-              color: 'var(--fgColor-success)',
-              fontWeight: 600,
-            }}
-          >
+          <Stack direction="horizontal" gap="condensed" align="center">
+            {lastUpdatedAt ? (
+              <Text style={{ fontSize: 11, color: 'var(--fgColor-muted)', whiteSpace: 'nowrap' }}>
+                Updated {timeAgo(new Date(lastUpdatedAt).toISOString())}
+              </Text>
+            ) : null}
             <span
               style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: 'var(--bgColor-success-emphasis)',
-                boxShadow: '0 0 0 3px var(--bgColor-success-muted)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 11,
+                color: 'var(--fgColor-success)',
+                fontWeight: 600,
               }}
-            />
-            LIVE
-          </span>
+            >
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  background: 'var(--bgColor-success-emphasis)',
+                  boxShadow: '0 0 0 3px var(--bgColor-success-muted)',
+                  animation: isValidating ? 'nba-pulse 1s ease-in-out infinite' : undefined,
+                }}
+              />
+              LIVE
+            </span>
+          </Stack>
         )}
       </Stack>
 
