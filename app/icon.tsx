@@ -51,6 +51,17 @@ export default function Icon() {
               <path d="M33.7 11.5c1 .7 1.6 1.8 1.6 3.1 0 .9-.3 1.7-.8 2.4" />
               <path d="M38.7 11.5c-1 .7-1.6 1.8-1.6 3.1 0 .9.3 1.7.8 2.4" />
             </g>
+            <rect
+              x="0.75"
+              y="0.75"
+              width="46.5"
+              height="46.5"
+              rx="10.25"
+              fill="none"
+              stroke={WHITE}
+              strokeOpacity="0.18"
+              strokeWidth="1.5"
+            />
           </g>
         </svg>
       </div>
