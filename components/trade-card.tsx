@@ -107,14 +107,8 @@ function PartyColumn({ party }: { party: TradeParty }) {
   const team = getTeam(party.teamId)
   return (
     <div
+      className="trade-party-col"
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-        flex: '1 1 220px',
-        minWidth: 200,
-        padding: 14,
-        borderRadius: 12,
         background: 'var(--bgColor-muted)',
         border: '1px solid var(--borderColor-default)',
         borderTop: `3px solid ${team?.primary ?? 'var(--borderColor-emphasis)'}`,
@@ -162,6 +156,7 @@ export function TradeCard({ trade }: { trade: Trade }) {
 
   return (
     <section
+      className="trade-card"
       style={{
         borderRadius: 14,
         border: '1px solid var(--borderColor-default)',
@@ -196,16 +191,7 @@ export function TradeCard({ trade }: { trade: Trade }) {
         </Text>
       </div>
 
-      <div
-        style={{
-          padding: 18,
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 12,
-          alignItems: 'stretch',
-          justifyContent: 'center',
-        }}
-      >
+      <div className="trade-parties" style={{ padding: 18 }}>
         {trade.parties.map((party, i) => (
           <div
             key={party.teamId + i}
@@ -213,17 +199,7 @@ export function TradeCard({ trade }: { trade: Trade }) {
           >
             <PartyColumn party={party} />
             {i < trade.parties.length - 1 ? (
-              <div
-                aria-hidden
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flex: '0 0 auto',
-                  color: 'var(--fgColor-muted)',
-                  alignSelf: 'center',
-                }}
-              >
+              <div aria-hidden className="trade-connector">
                 <span
                   style={{
                     display: 'inline-flex',

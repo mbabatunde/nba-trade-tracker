@@ -24,7 +24,7 @@ export default function Page() {
           zIndex: 10,
         }}
       >
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '16px 24px' }}>
+        <div className="app-container" style={{ paddingTop: 14, paddingBottom: 14 }}>
           <Stack direction="horizontal" gap="condensed" align="center" justify="space-between" wrap="wrap">
             <Stack direction="horizontal" gap="condensed" align="center">
               <IconButton
@@ -98,7 +98,7 @@ export default function Page() {
           marginTop: 24,
         }}
       >
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 24px' }}>
+        <div className="app-container" style={{ paddingTop: 20, paddingBottom: 20 }}>
           <Stack direction="horizontal" gap="condensed" align="center" justify="center" wrap="wrap">
             <Text style={{ fontSize: 13, color: 'var(--fgColor-muted)' }}>
               Powered through{' '}
